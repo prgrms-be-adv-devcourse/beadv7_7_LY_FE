@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { searchProducts } from "../../api/products";
-import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { VinylCover } from "../../components/VinylCover";
 
 export interface PickedProduct {
@@ -20,13 +19,26 @@ interface ProductPickerProps {
 // 새 음반을 만드는 화면이 아니라 기존 음반을 찾아 고르는 화면이다
 export function ProductPicker({ picked, onPick }: ProductPickerProps) {
     const [keyword, setKeyword] = useState("");
-    const debounced = useDebouncedValue(keyword, 300).trim();
+    // 검색은 엔터/버튼에서만 실행한다 — 검색 쿼리가 서버에서 수 초짜리라 타이핑마다 쏘면 겹쳐서 느려진다
+    const [submitted, setSubmitted] = useState("");
+    const [tooShort, setTooShort] = useState(false);
 
     const results = useQuery({
-        queryKey: ["productSearch", debounced, 0],
-        queryFn: () => searchProducts(debounced, 0, 8),
-        enabled: debounced.length > 0 && picked === null,
+        queryKey: ["productSearch", submitted, 0],
+        queryFn: ({ signal }) => searchProducts(submitted, 0, 8, signal),
+        enabled: submitted.length >= 2 && picked === null,
+        retry: 0,
     });
+
+    function runSearch() {
+        const next = keyword.trim();
+        if (next.length < 2) {
+            setTooShort(true);
+            return;
+        }
+        setTooShort(false);
+        setSubmitted(next);
+    }
 
     if (picked) {
         return (
@@ -55,26 +67,46 @@ export function ProductPicker({ picked, onPick }: ProductPickerProps) {
 
     return (
         <div>
-            <input
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                placeholder="앨범 제목·아티스트·카탈로그 번호로 검색"
-                aria-label="마스터 상품 검색"
-                className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-[14px] outline-none focus:border-line-strong"
-            />
-            {debounced.length === 0 && (
+            <div className="flex gap-2">
+                <input
+                    value={keyword}
+                    onChange={(e) => setKeyword(e.target.value)}
+                    onKeyDown={(e) => {
+                        // 경매 등록 폼(form) 안이라 엔터가 폼 제출로 새면 안 된다 — 여기서 잡아 검색만 실행
+                        if (e.key === "Enter") {
+                            e.preventDefault();
+                            runSearch();
+                        }
+                    }}
+                    placeholder="앨범 제목·아티스트·카탈로그 번호 (2글자 이상)"
+                    aria-label="마스터 상품 검색"
+                    className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-[14px] outline-none focus:border-line-strong"
+                />
+                <button
+                    type="button"
+                    onClick={runSearch}
+                    disabled={results.isFetching}
+                    className="shrink-0 rounded-xl bg-brand px-4 text-[13px] font-semibold text-white disabled:opacity-50"
+                >
+                    {results.isFetching ? "검색 중…" : "검색"}
+                </button>
+            </div>
+            {tooShort && (
+                <p className="mt-2 text-[12px] font-semibold text-live">검색어를 2글자 이상 입력해주세요.</p>
+            )}
+            {submitted.length === 0 && !tooShort && (
                 <p className="mt-2 text-[12px] text-muted">
                     카탈로그에 등록된 음반만 경매로 올릴 수 있습니다. 검색해서 고르세요.
                 </p>
             )}
-            {debounced.length > 0 && results.isPending && (
+            {submitted.length > 0 && results.isPending && (
                 <p className="mt-2 text-[12px] text-muted">검색 중…</p>
             )}
             {results.error && (
                 <p className="mt-2 text-[12px] font-semibold text-live">상품 검색에 실패했습니다.</p>
             )}
             {results.data && results.data.content.length === 0 && (
-                <p className="mt-2 text-[12px] text-muted">‘{debounced}’ 검색 결과가 없습니다.</p>
+                <p className="mt-2 text-[12px] text-muted">‘{submitted}’ 검색 결과가 없습니다.</p>
             )}
             {results.data && results.data.content.length > 0 && (
                 <ul className="mt-2 flex flex-col gap-1.5">

@@ -66,9 +66,15 @@ export function getPriceSummary(productId: string | number): Promise<PriceSummar
     return apiGet<PriceSummaryResponse>(`/api/v1/products/${productId}/price-summary`);
 }
 
-export function searchProducts(q: string, page: number, size = 20): Promise<ProductSearchResponse> {
+export function searchProducts(
+    q: string,
+    page: number,
+    size = 20,
+    signal?: AbortSignal,
+): Promise<ProductSearchResponse> {
     const params = new URLSearchParams({ q, page: String(page), size: String(size) });
-    return apiGet<ProductSearchResponse>(`/api/v1/search/products?${params}`);
+    // signal: 새 검색이 시작되면 이전 요청을 취소한다 — 연결이 끊기면 서버(MySQL) 쿼리도 중단된다
+    return apiGet<ProductSearchResponse>(`/api/v1/search/products?${params}`, signal);
 }
 
 // GET /api/v1/products — 카탈로그 둘러보기 목록.

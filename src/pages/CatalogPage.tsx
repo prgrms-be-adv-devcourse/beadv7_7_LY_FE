@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { fetchProductList, searchProducts } from "../api/products";
-import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { VinylCover } from "../components/VinylCover";
 import { QueryState } from "../components/QueryState";
 import { Pagination } from "../components/Pagination";
@@ -133,34 +132,36 @@ export function CatalogPage() {
     const page = Math.max(0, Number(searchParams.get("page") ?? "0") || 0);
 
     const [input, setInput] = useState(urlQuery);
-    const debounced = useDebouncedValue(input, 300);
-    const lastSyncedQuery = useRef(urlQuery);
+    const [tooShort, setTooShort] = useState(false);
 
-    // 입력창 → URL: 디바운스된 입력이 바뀌었을 때만 URL을 갱신한다
+    // URL → 입력창: 뒤로가기 등 바깥에서 URL이 바뀌면 입력창을 URL에 맞춘다
     useEffect(() => {
-        const next = debounced.trim();
-        if (next === urlQuery) {
-            lastSyncedQuery.current = urlQuery;
+        setInput(urlQuery);
+    }, [urlQuery]);
+
+    // 검색은 엔터/버튼에서만 실행한다 — 검색 쿼리 1회가 서버에서 수 초짜리라,
+    // 타이핑 중간값(디바운스)마다 쏘면 요청이 서버에서 겹쳐 돌며 전체가 느려진다
+    function submitSearch(e: React.FormEvent) {
+        e.preventDefault();
+        const next = input.trim();
+        // 1글자 검색은 사실상 전체 훑기라 막는다 (빈 값은 둘러보기 모드로 전환이니 허용)
+        if (next.length === 1) {
+            setTooShort(true);
             return;
         }
-        lastSyncedQuery.current = next;
+        setTooShort(false);
         setSearchParams(next ? { q: next, page: "0" } : {}, { replace: true });
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [debounced]);
-
-    // URL → 입력창: 헤더 검색이나 뒤로가기 등 바깥에서 URL이 바뀌면 입력창을 URL에 맞춘다
-    useEffect(() => {
-        if (urlQuery !== lastSyncedQuery.current) {
-            lastSyncedQuery.current = urlQuery;
-            setInput(urlQuery);
-        }
-    }, [urlQuery]);
+    }
 
     const query = useQuery({
         queryKey: ["productSearch", urlQuery, page],
-        queryFn: () => searchProducts(urlQuery, page, PAGE_SIZE),
-        enabled: urlQuery.trim().length > 0,
+        // React Query가 주는 AbortSignal을 fetch까지 관통시킨다 —
+        // 새 검색을 하면 이전 검색 요청이 취소되고, 연결이 끊기면 서버 쿼리도 중단된다
+        queryFn: ({ signal }) => searchProducts(urlQuery, page, PAGE_SIZE, signal),
+        enabled: urlQuery.trim().length >= 2,
         placeholderData: keepPreviousData,
+        // 실패한 검색을 재시도하면 힘든 서버를 더 힘들게 만든다
+        retry: 0,
     });
 
     return (
@@ -170,16 +171,28 @@ export function CatalogPage() {
             <p className="mb-4 mt-1 text-[13.5px] text-muted">
                 앨범(릴리스) 단위로 탐색합니다 — 검색어가 없으면 등록된 릴리스를 둘러봅니다.
             </p>
-            <div className="mb-5 flex max-w-[520px] overflow-hidden rounded-xl border-[1.5px] border-line-strong bg-surface focus-within:border-brand">
-                <span aria-hidden="true" className="flex items-center pl-4 text-faint">⌕</span>
-                <input
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder="제목·아티스트·카탈로그 번호로 검색"
-                    aria-label="카탈로그 검색"
-                    className="flex-1 bg-transparent px-3 py-3 text-[15px] outline-none placeholder:text-faint"
-                />
-            </div>
+            <form onSubmit={submitSearch} className="mb-5 max-w-[520px]">
+                <div className="flex overflow-hidden rounded-xl border-[1.5px] border-line-strong bg-surface focus-within:border-brand">
+                    <span aria-hidden="true" className="flex items-center pl-4 text-faint">⌕</span>
+                    <input
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        placeholder="제목·아티스트·카탈로그 번호 (2글자 이상)"
+                        aria-label="카탈로그 검색"
+                        className="flex-1 bg-transparent px-3 py-3 text-[15px] outline-none placeholder:text-faint"
+                    />
+                    <button
+                        type="submit"
+                        disabled={query.isFetching}
+                        className="shrink-0 bg-brand px-5 text-[14px] font-semibold text-white disabled:opacity-50"
+                    >
+                        {query.isFetching ? "검색 중…" : "검색"}
+                    </button>
+                </div>
+                {tooShort && (
+                    <p className="mt-1.5 text-[12px] font-semibold text-live">검색어를 2글자 이상 입력해주세요.</p>
+                )}
+            </form>
 
             {urlQuery.trim() === "" ? (
                 <BrowseList page={page} onPage={(next) => setSearchParams({ page: String(next) })} />
