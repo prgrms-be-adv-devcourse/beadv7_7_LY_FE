@@ -1,5 +1,5 @@
-// 로그인 세션 보관 — JWT의 subject가 memberId라서 디코드해 X-Member-Id 헤더 값으로 쓴다.
-// (로컬에는 게이트웨이가 없어 프론트가 직접 X-Member-Id를 실어 보낸다)
+// 로그인 세션 보관 — JWT의 subject가 memberId라서 디코드해 화면 표시용으로 쓴다.
+// (회원 식별은 게이트웨이가 토큰을 검증해 X-Member-Id 헤더로 서비스에 전달한다)
 
 const STORAGE_KEY = "groove_session";
 

@@ -1,6 +1,7 @@
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getMyProfile } from "../api/members";
+import { logoutServer } from "../api/auth";
 import { clearSession, loadSession } from "../auth/session";
 
 const TABS = [
@@ -22,6 +23,8 @@ export function Layout() {
     const user = session === null ? null : (profile.data?.nickname ?? session.displayName);
 
     function logout() {
+        // 서버의 리프레시 토큰도 폐기한다 — 실패해도 로컬 세션 정리는 진행
+        logoutServer().catch(() => {});
         clearSession();
         // 주문·정산·지갑은 모두 로그인한 사람 기준이라, 캐시를 비우지 않으면
         // 다른 계정으로 다시 로그인했을 때 이전 사람의 내역이 잠깐 보인다

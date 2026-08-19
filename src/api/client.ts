@@ -1,4 +1,4 @@
-import { loadSession } from "../auth/session";
+import { clearSession, loadSession, saveSession } from "../auth/session";
 
 // 백엔드(게이트웨이) 주소. 비워두면 지금까지처럼 개발 서버의 중계 설정을 탄다.
 // 값을 넣으면 브라우저가 그 주소로 직접 요청한다 — 이때 게이트웨이에 출처 허용 설정이 있어야 한다
@@ -21,7 +21,28 @@ interface ApiEnvelope<T> {
     error: { code: string; message: string } | null;
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+const RENEWAL_PATH = "/api/v1/auth/renewal";
+
+// 액세스 토큰이 만료됐을 때 httpOnly 쿠키의 리프레시 토큰으로 새 토큰을 받아온다.
+// 실패하면(리프레시 토큰도 만료 등) 세션을 지워 재로그인을 유도한다
+async function tryRenewal(): Promise<boolean> {
+    try {
+        const res = await fetch(`${API_BASE_URL}${RENEWAL_PATH}`, { method: "POST", credentials: "include" });
+        const body = (await res.json().catch(() => null)) as ApiEnvelope<{ accessToken: string }> | null;
+        if (!res.ok || !body || !body.success) {
+            clearSession();
+            return false;
+        }
+        const session = loadSession();
+        if (session === null) return false;
+        saveSession({ ...session, token: body.data.accessToken });
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+async function request<T>(path: string, init?: RequestInit, retriedAfterRenewal = false): Promise<T> {
     let res: Response;
     try {
         res = await fetch(`${API_BASE_URL}${path}`, init);
@@ -30,6 +51,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     }
     const body = (await res.json().catch(() => null)) as ApiEnvelope<T> | null;
     if (!res.ok || !body || !body.success) {
+        // 액세스 토큰 만료(401)면 한 번만 재발급받고 원 요청을 새 토큰으로 재시도한다
+        if (res.status === 401 && !retriedAfterRenewal && loadSession() !== null && (await tryRenewal())) {
+            const retryInit: RequestInit = {
+                ...init,
+                headers: { ...(init?.headers as Record<string, string>), ...memberHeaders() },
+            };
+            return request<T>(path, retryInit, true);
+        }
         throw new ApiError(
             body?.error?.code ?? "UNKNOWN",
             body?.error?.message ?? `요청이 실패했습니다 (HTTP ${res.status})`,
@@ -47,8 +76,8 @@ function memberHeaders(): Record<string, string> {
     return session ? { Authorization: `Bearer ${session.token}` } : {};
 }
 
-export function apiGet<T>(path: string): Promise<T> {
-    return request<T>(path, { headers: memberHeaders() });
+export function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> {
+    return request<T>(path, { headers: memberHeaders(), signal });
 }
 
 export function apiPost<T>(path: string, payload?: unknown): Promise<T> {
