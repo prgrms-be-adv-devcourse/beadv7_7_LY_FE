@@ -31,6 +31,8 @@ const STATUSES = [
     { value: "ORDERED", label: "주문 완료" },
     { value: "COMPLETED", label: "거래 확정" },
     { value: "CANCELLED", label: "주문 취소" },
+    { value: "REFUND_REQUESTED", label: "환불 신청됨" },
+    { value: "REFUND", label: "환불 완료" },
 ];
 
 export function OrdersTab() {

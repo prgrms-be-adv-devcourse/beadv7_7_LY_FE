@@ -1,6 +1,6 @@
 import { apiGet } from "./client";
 
-// core-service /api/v1/settlements — 판매자(X-Member-Id) 기준 조회
+// fulfillment-service /api/v1/settlements — 판매자(X-Member-Id) 기준 조회
 export type SettlementStatus = "PENDING" | "CONFIRMED";
 
 export interface SettlementItem {

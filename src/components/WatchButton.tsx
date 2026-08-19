@@ -19,9 +19,9 @@ export function useWatchedAuctions() {
 }
 
 // 서버는 아직 시작 전이거나 진행 중인 경매만 관심 목록에 넣어준다.
-// 끝난 경매는 새로 담을 수 없고, 이미 담아둔 것을 빼는 것만 가능하다
+// 낙찰 처리 중(CLOSING)이거나 끝난 경매는 새로 담을 수 없고, 이미 담아둔 것을 빼는 것만 가능하다
 function isWatchable(status: AuctionStatus): boolean {
-    return status === "SCHEDULED" || status === "RUNNING" || status === "CLOSING";
+    return status === "SCHEDULED" || status === "RUNNING";
 }
 
 interface WatchButtonProps {

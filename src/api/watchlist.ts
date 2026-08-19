@@ -1,7 +1,7 @@
 import { apiDelete, apiGet, apiPut } from "./client";
 import type { AuctionStatus } from "./auctions";
 
-// core-service /api/v1/members/me/watched-auctions — 경매 단위 관심 목록.
+// auction-service /api/v1/members/me/watched-auctions — 경매 단위 관심 목록.
 // 페이징 없이 상태별로 묶인 그룹 배열이 한 번에 내려온다 (서버가 회원당 30건으로 제한)
 export interface WatchedAuction {
     id: number;

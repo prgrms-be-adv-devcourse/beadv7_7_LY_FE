@@ -1,6 +1,6 @@
 import { apiDelete, apiGet, apiPut } from "./client";
 
-// core-service /api/v1/members/me/liked-products — 상품 단위 찜.
+// product-service /api/v1/members/me/liked-products — 상품 단위 찜.
 // 다른 목록 API와 달리 페이지 번호가 아니라 커서(마지막으로 받은 항목 id)로 넘긴다
 export interface LikedProduct {
     id: number;

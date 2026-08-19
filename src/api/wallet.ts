@@ -1,6 +1,6 @@
 import { apiGet, apiPost } from "./client";
 
-// core-service /api/v1/wallet — 홀드는 잔액에서 즉시 빠지는 모델이라 이 값이 곧 입찰 가능액이다
+// pointwallet-service /api/v1/wallet — 홀드는 잔액에서 즉시 빠지는 모델이라 이 값이 곧 입찰 가능액이다
 export interface WalletBalance {
     availableBalance: number;
 }

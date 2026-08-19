@@ -1,8 +1,8 @@
 import { apiGet, apiPost } from "./client";
 
-// core-service /api/v1/orders — 필드명은 백엔드 OrderPageResponse / OrderDetailResponse 그대로
+// fulfillment-service /api/v1/orders — 필드명은 백엔드 OrderPageResponse / OrderDetailResponse 그대로
 export type OrderPerspective = "BUYER" | "SELLER";
-export type OrderStatus = "PENDING" | "ORDERED" | "CANCELLED" | "COMPLETED";
+export type OrderStatus = "PENDING" | "ORDERED" | "CANCELLED" | "COMPLETED" | "REFUND_REQUESTED" | "REFUND";
 
 export interface OrderListItem {
     orderId: number;
@@ -106,6 +106,8 @@ const ORDER_STATUS_LABELS: Record<string, string> = {
     ORDERED: "주문 완료",
     CANCELLED: "주문 취소",
     COMPLETED: "거래 확정",
+    REFUND_REQUESTED: "환불 신청됨",
+    REFUND: "환불 완료",
 };
 
 export function formatOrderStatus(status: string): string {
