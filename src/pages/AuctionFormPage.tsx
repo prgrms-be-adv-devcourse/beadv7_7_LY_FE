@@ -16,7 +16,7 @@ import { loadSession } from "../auth/session";
 import { QueryState } from "../components/QueryState";
 import { formatWon } from "../components/AuctionCard";
 import { ProductPicker, type PickedProduct } from "./auction-form/ProductPicker";
-import { ImagePicker, type PickedImage } from "./auction-form/ImagePicker";
+import { ImagePicker, type LocalImage, type PickedImage } from "./auction-form/ImagePicker";
 import {
     addHours,
     earliestStartAt,
@@ -126,27 +126,51 @@ interface AuctionFormProps {
     originalImages?: string[];
 }
 
-// 새로 고른 사진(local)만 골라 서명 주소를 받고 S3에 직접 올린 뒤,
-// 기존 사진(remote)과 순서를 지켜 최종 주소 목록을 만든다
-async function resolveImageUrls(picked: PickedImage[]): Promise<string[]> {
-    const locals = picked.filter((p): p is Extract<PickedImage, { kind: "local" }> => p.kind === "local");
-    let uploaded: string[] = [];
-    if (locals.length > 0) {
+// 아직 안 올린 사진만 골라 서명 주소를 받아 S3에 올린다.
+// 올린 사진에는 받은 주소를 적어서 돌려준다 — 등록이 실패해 다시 눌러도 같은 사진을 또 올리지 않는다
+async function uploadPickedImages(picked: PickedImage[]): Promise<{ urls: string[]; picked: PickedImage[] }> {
+    const pending = picked.filter(
+        (p): p is LocalImage => p.kind === "local" && p.uploadedUrl === undefined);
+    // 미리보기 주소는 사진마다 유일해서, 발급받은 주소를 원래 사진에 되짚는 열쇠로 쓴다
+    const uploadedByPreview = new Map<string, string>();
+
+    if (pending.length > 0) {
         const { presignedImages } = await presignAuctionImages(
-            locals.map((local) => ({ contentType: "image/jpeg", contentLength: local.blob.size })));
+            pending.map((local) => ({ contentType: local.blob.type, contentLength: local.blob.size })));
+        // 발급 개수가 요청과 다르면 사진과 주소의 짝이 어긋난다. 여기서 끊어야 원인이 드러난다
+        if (presignedImages.length !== pending.length) {
+            throw new Error("사진 업로드 주소를 올바르게 받지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        }
         await Promise.all(presignedImages.map(async (presigned, i) => {
-            // Content-Type은 발급 때 선언한 값과 같아야 한다 — 서명에 묶여 있어 다르면 S3가 거부한다
-            const res = await fetch(presigned.uploadUrl, {
-                method: "PUT",
-                headers: { "Content-Type": "image/jpeg" },
-                body: locals[i].blob,
-            });
+            const local = pending[i];
+            let res: Response;
+            try {
+                // Content-Type은 발급 때 선언한 값과 같아야 한다 — 서명에 묶여 있어 다르면 S3가 거부한다
+                res = await fetch(presigned.uploadUrl, {
+                    method: "PUT",
+                    headers: { "Content-Type": local.blob.type },
+                    body: local.blob,
+                });
+            } catch {
+                // 연결 실패는 브라우저가 영문 메시지로 던진다 — 화면에 그대로 내보내지 않는다
+                throw new Error("사진을 올리지 못했습니다. 네트워크 상태를 확인한 뒤 다시 시도해 주세요.");
+            }
             if (!res.ok) throw new Error(`사진 업로드에 실패했습니다 (HTTP ${res.status})`);
+            uploadedByPreview.set(local.preview, presigned.imageUrl);
         }));
-        uploaded = presignedImages.map((presigned) => presigned.imageUrl);
     }
-    let next = 0;
-    return picked.map((p) => (p.kind === "remote" ? p.url : uploaded[next++]));
+
+    const next = picked.map<PickedImage>((p) => {
+        if (p.kind === "remote") return p;
+        const url = p.uploadedUrl ?? uploadedByPreview.get(p.preview);
+        return url === undefined ? p : { ...p, uploadedUrl: url };
+    });
+    const urls = next.map((p) => {
+        const url = p.kind === "remote" ? p.url : p.uploadedUrl;
+        if (url === undefined) throw new Error("사진 주소를 받지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        return url;
+    });
+    return { urls, picked: next };
 }
 
 function AuctionForm({
@@ -189,11 +213,13 @@ function AuctionForm({
     const submit = useMutation({
         // 새로 고른 사진을 먼저 S3에 올려 주소로 바꾼 뒤 등록한다 — 업로드가 실패하면 등록을 진행하지 않는다
         mutationFn: async (payload: Omit<AuctionPayload, "itemImages">) => {
-            const itemImages = await resolveImageUrls(images);
+            const uploaded = await uploadPickedImages(images);
+            // 올린 결과를 폼에 남긴다. 등록이 실패해 다시 눌러도 이미 올라간 사진은 건너뛴다
+            setImages(uploaded.picked);
             const full: AuctionPayload = {
                 ...payload,
                 // 사진을 안 넣었으면 빈 배열로 보낸다 — 서버가 이 항목을 빼거나 비우는 걸 허용하지 않는다
-                itemImages: itemImages.slice(0, AUCTION_POLICY.MAX_IMAGE_COUNT),
+                itemImages: uploaded.urls.slice(0, AUCTION_POLICY.MAX_IMAGE_COUNT),
             };
             return editing ? modifyAuction(auctionId as number, full) : createAuction(full);
         },
@@ -221,6 +247,8 @@ function AuctionForm({
 
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
+        // 버튼 잠금은 리렌더 뒤에야 걸린다 — 그 사이 들어온 두 번째 제출은 여기서 막는다
+        if (submit.isPending) return;
         setServerError(null);
         const found = validateAuctionForm(values, new Date());
         setErrors(found);
@@ -316,7 +344,7 @@ function AuctionForm({
                         <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-faint">
                             매물 사진 (선택)
                         </span>
-                        <ImagePicker images={images} onChange={setImages} />
+                        <ImagePicker images={images} onChange={setImages} disabled={submit.isPending} />
                     </div>
                 </Section>
 
