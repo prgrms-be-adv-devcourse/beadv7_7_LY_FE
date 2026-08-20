@@ -1,15 +1,20 @@
 import { useRef, useState } from "react";
 
-// 이미지를 올려둘 서버가 없어서, 브라우저에서 줄인 사진을 문자열로 바꿔 경매 정보에 그대로 담는다.
-// 사진 본문이 DB에 들어가는 방식이라 원본을 그대로 담으면 안 된다 — 아래 값으로 줄여서 담는다
+// 사진 실물은 S3에 올라가고 DB에는 주소만 저장된다.
+// 여기서는 사진을 줄여서 들고 있다가, 폼 제출 때 서명된 주소를 받아 S3로 직접 올린다.
 const MAX_EDGE_PX = 720;
 const JPEG_QUALITY = 0.7;
-// 서버는 5장까지 받지만, 사진이 경매 상세 응답에 통째로 실려 나가서 3장으로 묶어둔다
+// 서버는 5장까지 받지만, 상세 화면 레이아웃 기준으로 3장으로 묶어둔다
 export const MAX_ITEM_IMAGES = 3;
 // 줄이기 전에 거르는 크기. 이보다 큰 파일은 브라우저가 여는 동안 화면이 멈춘다
 const MAX_SOURCE_BYTES = 20 * 1024 * 1024;
 
-async function shrinkToDataUrl(file: File): Promise<string> {
+// 폼이 들고 있는 사진 한 장의 상태
+export type PickedImage =
+    | { kind: "remote"; url: string } // 이미 서버에 있는 사진 (수정 화면의 기존 사진)
+    | { kind: "local"; blob: Blob; preview: string }; // 이번에 고른 사진 (아직 업로드 전)
+
+async function shrinkToBlob(file: File): Promise<PickedImage> {
     // imageOrientation을 지정해야 세로로 찍은 사진이 눕지 않는다
     const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
     const scale = Math.min(1, MAX_EDGE_PX / Math.max(bitmap.width, bitmap.height));
@@ -26,13 +31,9 @@ async function shrinkToDataUrl(file: File): Promise<string> {
     }
     context.drawImage(bitmap, 0, 0, width, height);
     bitmap.close();
-    return canvas.toDataURL("image/jpeg", JPEG_QUALITY);
-}
-
-// 저장될 문자열이 실제로 몇 바이트인지 (사람에게 보여줄 용도)
-function approximateBytes(dataUrl: string): number {
-    const base64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
-    return Math.round((base64.length * 3) / 4);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY));
+    if (blob === null) throw new Error("브라우저가 이미지를 변환하지 못했습니다.");
+    return { kind: "local", blob, preview: URL.createObjectURL(blob) };
 }
 
 function formatBytes(bytes: number): string {
@@ -42,8 +43,8 @@ function formatBytes(bytes: number): string {
 }
 
 interface ImagePickerProps {
-    images: string[];
-    onChange: (images: string[]) => void;
+    images: PickedImage[];
+    onChange: (images: PickedImage[]) => void;
 }
 
 export function ImagePicker({ images, onChange }: ImagePickerProps) {
@@ -57,7 +58,7 @@ export function ImagePicker({ images, onChange }: ImagePickerProps) {
     async function addFiles(files: FileList) {
         setBusy(true);
         setError(null);
-        const added: string[] = [];
+        const added: PickedImage[] = [];
         let sourceBytes = 0;
         let resultBytes = 0;
 
@@ -71,10 +72,10 @@ export function ImagePicker({ images, onChange }: ImagePickerProps) {
                     setError(`${file.name}이(가) 너무 큽니다 (${formatBytes(file.size)}). ${formatBytes(MAX_SOURCE_BYTES)} 이하로 골라주세요.`);
                     continue;
                 }
-                const dataUrl = await shrinkToDataUrl(file);
-                added.push(dataUrl);
+                const picked = await shrinkToBlob(file);
+                added.push(picked);
                 sourceBytes += file.size;
-                resultBytes += approximateBytes(dataUrl);
+                resultBytes += picked.kind === "local" ? picked.blob.size : 0;
             }
             if (added.length > 0) {
                 onChange([...images, ...added]);
@@ -90,6 +91,9 @@ export function ImagePicker({ images, onChange }: ImagePickerProps) {
     }
 
     function removeAt(index: number) {
+        const target = images[index];
+        // 미리보기용으로 잡아둔 브라우저 메모리를 돌려준다
+        if (target.kind === "local") URL.revokeObjectURL(target.preview);
         onChange(images.filter((_, i) => i !== index));
         setReport(null);
     }
@@ -98,9 +102,9 @@ export function ImagePicker({ images, onChange }: ImagePickerProps) {
         <div>
             <div className="flex flex-wrap gap-2.5">
                 {images.map((image, index) => (
-                    <div key={`${index}-${image.slice(0, 32)}`} className="relative">
+                    <div key={index} className="relative">
                         <img
-                            src={image}
+                            src={image.kind === "remote" ? image.url : image.preview}
                             alt={`매물 사진 ${index + 1}`}
                             className="h-24 w-24 rounded-lg border border-line object-cover"
                         />

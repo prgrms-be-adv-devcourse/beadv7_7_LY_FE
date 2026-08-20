@@ -8,6 +8,7 @@ import {
     getAuctionDetail,
     ITEM_CONDITIONS,
     modifyAuction,
+    presignAuctionImages,
     type AuctionPayload,
 } from "../api/auctions";
 import { ApiError } from "../api/client";
@@ -15,7 +16,7 @@ import { loadSession } from "../auth/session";
 import { QueryState } from "../components/QueryState";
 import { formatWon } from "../components/AuctionCard";
 import { ProductPicker, type PickedProduct } from "./auction-form/ProductPicker";
-import { ImagePicker } from "./auction-form/ImagePicker";
+import { ImagePicker, type PickedImage } from "./auction-form/ImagePicker";
 import {
     addHours,
     earliestStartAt,
@@ -125,6 +126,29 @@ interface AuctionFormProps {
     originalImages?: string[];
 }
 
+// 새로 고른 사진(local)만 골라 서명 주소를 받고 S3에 직접 올린 뒤,
+// 기존 사진(remote)과 순서를 지켜 최종 주소 목록을 만든다
+async function resolveImageUrls(picked: PickedImage[]): Promise<string[]> {
+    const locals = picked.filter((p): p is Extract<PickedImage, { kind: "local" }> => p.kind === "local");
+    let uploaded: string[] = [];
+    if (locals.length > 0) {
+        const { presignedImages } = await presignAuctionImages(
+            locals.map((local) => ({ contentType: "image/jpeg", contentLength: local.blob.size })));
+        await Promise.all(presignedImages.map(async (presigned, i) => {
+            // Content-Type은 발급 때 선언한 값과 같아야 한다 — 서명에 묶여 있어 다르면 S3가 거부한다
+            const res = await fetch(presigned.uploadUrl, {
+                method: "PUT",
+                headers: { "Content-Type": "image/jpeg" },
+                body: locals[i].blob,
+            });
+            if (!res.ok) throw new Error(`사진 업로드에 실패했습니다 (HTTP ${res.status})`);
+        }));
+        uploaded = presignedImages.map((presigned) => presigned.imageUrl);
+    }
+    let next = 0;
+    return picked.map((p) => (p.kind === "remote" ? p.url : uploaded[next++]));
+}
+
 function AuctionForm({
     mode,
     auctionId,
@@ -139,7 +163,8 @@ function AuctionForm({
     const queryClient = useQueryClient();
     const [values, setValues] = useState<AuctionFormValues>(() => initialValues ?? emptyValues(new Date()));
     const [product, setProduct] = useState<PickedProduct | null>(initialProduct ?? null);
-    const [images, setImages] = useState<string[]>(originalImages);
+    const [images, setImages] = useState<PickedImage[]>(
+        () => originalImages.map((url) => ({ kind: "remote", url })));
     const [errors, setErrors] = useState<string[]>([]);
     const [serverError, setServerError] = useState<string | null>(null);
 
@@ -162,15 +187,24 @@ function AuctionForm({
     }, [product]);
 
     const submit = useMutation({
-        mutationFn: (payload: AuctionPayload) =>
-            editing ? modifyAuction(auctionId as number, payload) : createAuction(payload),
+        // 새로 고른 사진을 먼저 S3에 올려 주소로 바꾼 뒤 등록한다 — 업로드가 실패하면 등록을 진행하지 않는다
+        mutationFn: async (payload: Omit<AuctionPayload, "itemImages">) => {
+            const itemImages = await resolveImageUrls(images);
+            const full: AuctionPayload = {
+                ...payload,
+                // 사진을 안 넣었으면 빈 배열로 보낸다 — 서버가 이 항목을 빼거나 비우는 걸 허용하지 않는다
+                itemImages: itemImages.slice(0, AUCTION_POLICY.MAX_IMAGE_COUNT),
+            };
+            return editing ? modifyAuction(auctionId as number, full) : createAuction(full);
+        },
         onSuccess: (result) => {
             queryClient.invalidateQueries({ queryKey: ["auctions"] });
             queryClient.invalidateQueries({ queryKey: ["auction", String(result.auctionId)] });
             navigate(`/auctions/${result.auctionId}`);
         },
         onError: (e: unknown) => {
-            setServerError(e instanceof ApiError ? e.message : "경매 저장 중 문제가 생겼습니다.");
+            // 업로드 단계(presign·S3 PUT)의 실패 메시지도 그대로 보여준다
+            setServerError(e instanceof Error ? e.message : "경매 저장 중 문제가 생겼습니다.");
         },
     });
 
@@ -198,8 +232,6 @@ function AuctionForm({
             productId: values.productId as number,
             itemCondition: values.itemCondition,
             itemDescription: description === "" ? null : description,
-            // 사진을 안 넣었으면 빈 배열로 보낸다 — 서버가 이 항목을 빼거나 비우는 걸 허용하지 않는다
-            itemImages: images.slice(0, AUCTION_POLICY.MAX_IMAGE_COUNT),
             startPrice: Number(values.startPrice),
             shippingFee: Number(values.shippingFee),
             bidUnit: Number(values.bidUnit),
