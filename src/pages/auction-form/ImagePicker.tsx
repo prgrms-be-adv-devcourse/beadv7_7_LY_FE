@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type Dispatch, type SetStateAction } from "react";
 
 // 사진 실물은 S3에 올라가고 DB에는 주소만 저장된다.
 // 여기서는 사진을 줄여서 들고 있다가, 폼 제출 때 서명된 주소를 받아 S3로 직접 올린다.
@@ -46,12 +46,15 @@ function formatBytes(bytes: number): string {
 
 interface ImagePickerProps {
     images: PickedImage[];
-    onChange: (images: PickedImage[]) => void;
+    // 갱신 함수를 받는다 — 사진을 줄이는 동안 목록이 바뀔 수 있어서, 낡은 배열을 덮어쓰지 않으려면 최신 값 기준으로 더해야 한다
+    onChange: Dispatch<SetStateAction<PickedImage[]>>;
     // 저장이 진행되는 동안 잠근다. 잠그지 않으면 올리는 중에 뺀 사진이 화면에서만 사라지고 등록에는 그대로 들어간다
     disabled?: boolean;
+    // 사진을 줄이는 중인지 부모에게 알린다. 폼이 이걸 모르면 줄이는 도중 저장이 눌려 사진 없이 등록된다
+    onBusyChange?: (busy: boolean) => void;
 }
 
-export function ImagePicker({ images, onChange, disabled = false }: ImagePickerProps) {
+export function ImagePicker({ images, onChange, disabled = false, onBusyChange }: ImagePickerProps) {
     const inputRef = useRef<HTMLInputElement>(null);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -59,8 +62,13 @@ export function ImagePicker({ images, onChange, disabled = false }: ImagePickerP
 
     const remaining = MAX_ITEM_IMAGES - images.length;
 
+    function updateBusy(next: boolean) {
+        setBusy(next);
+        onBusyChange?.(next);
+    }
+
     async function addFiles(files: FileList) {
-        setBusy(true);
+        updateBusy(true);
         setError(null);
         const added: PickedImage[] = [];
         let sourceBytes = 0;
@@ -88,11 +96,11 @@ export function ImagePicker({ images, onChange, disabled = false }: ImagePickerP
                 }
             }
             if (added.length > 0) {
-                onChange([...images, ...added]);
+                onChange((current) => [...current, ...added]);
                 setReport(`${formatBytes(sourceBytes)} → ${formatBytes(resultBytes)}로 줄여 담았습니다.`);
             }
         } finally {
-            setBusy(false);
+            updateBusy(false);
             // 같은 파일을 다시 고를 수 있게 입력값을 비운다
             if (inputRef.current) inputRef.current.value = "";
         }
@@ -103,7 +111,7 @@ export function ImagePicker({ images, onChange, disabled = false }: ImagePickerP
         const target = images[index];
         // 미리보기용으로 잡아둔 브라우저 메모리를 돌려준다
         if (target.kind === "local") URL.revokeObjectURL(target.preview);
-        onChange(images.filter((_, i) => i !== index));
+        onChange((current) => current.filter((_, i) => i !== index));
         setReport(null);
     }
 
@@ -111,7 +119,7 @@ export function ImagePicker({ images, onChange, disabled = false }: ImagePickerP
         <div>
             <div className="flex flex-wrap gap-2.5">
                 {images.map((image, index) => (
-                    <div key={index} className="relative">
+                    <div key={image.kind === "remote" ? image.url : image.preview} className="relative">
                         <img
                             src={image.kind === "remote" ? image.url : image.preview}
                             alt={`매물 사진 ${index + 1}`}
