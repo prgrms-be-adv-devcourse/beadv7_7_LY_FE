@@ -41,7 +41,7 @@ export function MySummary({ onSelect }: MySummaryProps) {
     const hasPending = (pendingCount ?? 0) > 0;
 
     return (
-        <div className="grid grid-cols-2 border-y-[1.5px] border-ink md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <SummaryCell
                 label="결제 대기"
                 value={pendingCount === undefined ? "—" : `${pendingCount}건`}
@@ -93,8 +93,10 @@ function SummaryCell({ label, value, sub, alert = false, onClick }: SummaryCellP
         <button
             type="button"
             onClick={onClick}
-            className={`border-r border-line px-4 py-4 text-left transition-colors last:border-r-0 hover:bg-surface2/60 max-md:[&:nth-child(2n)]:border-r-0 ${
-                alert ? "text-live" : ""
+            className={`rounded-xl border px-4 py-3.5 text-left shadow-sm transition-colors ${
+                alert
+                    ? "border-live bg-live-bg text-live"
+                    : "border-line bg-surface hover:border-line-strong"
             }`}
         >
             <p className={`text-[10px] font-bold uppercase tracking-[0.12em] ${alert ? "text-live" : "text-faint"}`}>

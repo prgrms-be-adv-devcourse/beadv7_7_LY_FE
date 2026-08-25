@@ -81,10 +81,10 @@ export function MyPage() {
                                     type="button"
                                     aria-current={tab === t.value ? "page" : undefined}
                                     onClick={() => selectTab(t.value)}
-                                    className={`whitespace-nowrap px-3 pb-3 pt-1 text-[13.5px] transition-colors ${
+                                    className={`-mb-px whitespace-nowrap border-b-2 px-3 pb-3 pt-1 text-[13.5px] font-semibold transition-colors ${
                                         tab === t.value
-                                            ? "font-bold text-ink shadow-[inset_0_-2px_0_var(--color-ink)]"
-                                            : "font-semibold text-muted hover:text-ink"
+                                            ? "border-brand text-ink"
+                                            : "border-transparent text-muted hover:text-ink"
                                     }`}
                                 >
                                     {t.label}

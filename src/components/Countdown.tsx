@@ -21,8 +21,21 @@ export function useNow(intervalMs = 1000): number {
     return now;
 }
 
+// 여유 있는 시간은 "7시간"처럼 뭉뚱그린다 — 모든 카드가 초 단위로 움직이면
+// 진짜 임박한 것이 안 보이고, 매초 리렌더 비용만 든다
+function formatCoarse(ms: number): string {
+    const totalMin = Math.floor(ms / 60_000);
+    const days = Math.floor(totalMin / 1440);
+    const hours = Math.floor((totalMin % 1440) / 60);
+    if (days > 0) return hours > 0 ? `${days}일 ${hours}시간` : `${days}일`;
+    return `${hours}시간`;
+}
+
 export function Countdown({ endsAt }: { endsAt: number }) {
-    const now = useNow();
+    // 임박(1시간 미만)해야만 초 단위로 움직인다. 여유 구간은 1분에 한 번만 갱신 —
+    // 임박 구간으로 넘어가는 시점도 최대 1분 오차로 따라잡는다
+    const soonAtMount = endsAt - Date.now() < 3600_000;
+    const now = useNow(soonAtMount ? 1000 : 60_000);
     const remaining = endsAt - now;
     const soon = remaining > 0 && remaining < 3600_000;
     return (
@@ -36,7 +49,7 @@ export function Countdown({ endsAt }: { endsAt: number }) {
                     soon ? "bg-live animate-[live-pulse_1.1s_infinite] motion-reduce:animate-none" : "bg-faint"
                 }`}
             />
-            {formatRemaining(remaining)}
+            {soon || remaining <= 0 ? formatRemaining(remaining) : formatCoarse(remaining)}
         </span>
     );
 }
