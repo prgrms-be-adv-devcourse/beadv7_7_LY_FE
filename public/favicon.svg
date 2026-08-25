@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- 헤더 로고(도는 LP)와 같은 모티프의 레코드판 -->
+  <circle cx="16" cy="16" r="15" fill="#23241f"/>
+  <circle cx="16" cy="16" r="10.5" fill="none" stroke="#3a3b35" stroke-width="1.2"/>
+  <circle cx="16" cy="16" r="7" fill="none" stroke="#3a3b35" stroke-width="1.2"/>
+  <circle cx="16" cy="16" r="4.6" fill="#b24a28"/>
+  <circle cx="16" cy="16" r="1.4" fill="#f7f6f1"/>
+</svg>

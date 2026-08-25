@@ -1,5 +1,26 @@
 @import "tailwindcss";
 
+/* 제목용 서체 — 네이버 마루 부리 (무료·OFL, 공식 웹폰트 CDN).
+   공식 CSS는 웨이트마다 패밀리명을 쪼개 놓아 font-weight 매핑이 안 되므로 직접 선언한다 */
+@font-face {
+    font-family: "MaruBuri";
+    font-weight: 400;
+    font-display: swap;
+    src: url(https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Regular.woff2) format("woff2");
+}
+@font-face {
+    font-family: "MaruBuri";
+    font-weight: 600;
+    font-display: swap;
+    src: url(https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-SemiBold.woff2) format("woff2");
+}
+@font-face {
+    font-family: "MaruBuri";
+    font-weight: 700;
+    font-display: swap;
+    src: url(https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Bold.woff2) format("woff2");
+}
+
 @theme {
     --color-paper: #f7f6f1;
     --color-surface: #ffffff;
@@ -18,7 +39,7 @@
     --color-glow: #f3c476;
     --font-sans: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo",
         "Malgun Gothic", sans-serif;
-    --font-display: Georgia, "Noto Serif KR", "Times New Roman", serif;
+    --font-display: "MaruBuri", Georgia, "Times New Roman", serif;
     --font-mono: "SF Mono", "Cascadia Code", "JetBrains Mono", ui-monospace, monospace;
 }
 
