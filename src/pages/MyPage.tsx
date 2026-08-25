@@ -2,6 +2,7 @@ import { Link, useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getMyProfile } from "../api/members";
 import { useSession } from "../auth/session";
+import { MySummary } from "./mypage/MySummary";
 import { OrdersTab } from "./mypage/OrdersTab";
 import { SettlementsTab } from "./mypage/SettlementsTab";
 import { WalletTab } from "./mypage/WalletTab";
@@ -10,23 +11,40 @@ import { WatchedAuctionsTab } from "./mypage/WatchedAuctionsTab";
 import { HostedAuctionsTab } from "./mypage/HostedAuctionsTab";
 import { ParticipatedAuctionsTab } from "./mypage/ParticipatedAuctionsTab";
 
-const TABS = [
-    { value: "orders", label: "주문" },
-    { value: "settlements", label: "정산" },
-    { value: "wallet", label: "지갑" },
-    { value: "liked", label: "찜한 상품" },
-    { value: "watched", label: "관심 경매" },
-    { value: "hosted", label: "등록한 경매" },
-    { value: "participated", label: "참여한 경매" },
+// 성격이 다른 탭을 한 줄에 섞지 않는다 — 경매 활동과 돈이 오가는 거래로 2그룹
+const TAB_GROUPS = [
+    {
+        label: "경매 활동",
+        tabs: [
+            { value: "participated", label: "참여한 경매" },
+            { value: "hosted", label: "등록한 경매" },
+            { value: "liked", label: "찜한 상품" },
+            { value: "watched", label: "관심 경매" },
+        ],
+    },
+    {
+        label: "거래",
+        tabs: [
+            { value: "orders", label: "주문" },
+            { value: "settlements", label: "정산" },
+            { value: "wallet", label: "지갑" },
+        ],
+    },
 ] as const;
 
-type TabValue = (typeof TABS)[number]["value"];
+export type TabValue = (typeof TAB_GROUPS)[number]["tabs"][number]["value"];
+
+const ALL_TAB_VALUES: readonly string[] = TAB_GROUPS.flatMap((group) => group.tabs.map((t) => t.value));
 
 export function MyPage() {
     const [searchParams, setSearchParams] = useSearchParams();
     const session = useSession();
     const tabParam = searchParams.get("tab");
-    const tab: TabValue = TABS.some((t) => t.value === tabParam) ? (tabParam as TabValue) : "orders";
+    const tab: TabValue = ALL_TAB_VALUES.includes(tabParam ?? "") ? (tabParam as TabValue) : "participated";
+
+    function selectTab(next: TabValue) {
+        setSearchParams({ tab: next }, { replace: true });
+    }
 
     if (!session) {
         return (
@@ -45,22 +63,35 @@ export function MyPage() {
 
     return (
         <div>
-            <ProfileHeader fallbackName={session.displayName} />
-            <nav className="mb-5 flex gap-1 border-b border-line" aria-label="마이페이지 탭">
-                {TABS.map((t) => (
-                    <button
-                        key={t.value}
-                        type="button"
-                        aria-current={tab === t.value ? "page" : undefined}
-                        onClick={() => setSearchParams({ tab: t.value }, { replace: true })}
-                        className={`-mb-px border-b-2 px-4 py-2 text-[13.5px] font-semibold transition-colors ${
-                            tab === t.value
-                                ? "border-brand text-ink"
-                                : "border-transparent text-muted hover:text-ink"
-                        }`}
-                    >
-                        {t.label}
-                    </button>
+            <ProfileLine fallbackName={session.displayName} />
+            <MySummary onSelect={selectTab} />
+            <nav
+                className="mb-5 mt-5 flex gap-7 overflow-x-auto border-b border-line"
+                aria-label="마이페이지 탭"
+            >
+                {TAB_GROUPS.map((group, index) => (
+                    <div key={group.label} className={index > 0 ? "border-l border-line pl-7" : ""}>
+                        <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-[0.1em] text-faint">
+                            {group.label}
+                        </p>
+                        <div className="flex">
+                            {group.tabs.map((t) => (
+                                <button
+                                    key={t.value}
+                                    type="button"
+                                    aria-current={tab === t.value ? "page" : undefined}
+                                    onClick={() => selectTab(t.value)}
+                                    className={`whitespace-nowrap px-3 pb-3 pt-1 text-[13.5px] transition-colors ${
+                                        tab === t.value
+                                            ? "font-bold text-ink shadow-[inset_0_-2px_0_var(--color-ink)]"
+                                            : "font-semibold text-muted hover:text-ink"
+                                    }`}
+                                >
+                                    {t.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                 ))}
             </nav>
             {tab === "orders" && <OrdersTab />}
@@ -74,29 +105,15 @@ export function MyPage() {
     );
 }
 
-function ProfileHeader({ fallbackName }: { fallbackName: string }) {
+function ProfileLine({ fallbackName }: { fallbackName: string }) {
     // 프로필 조회가 실패해도 탭은 쓸 수 있어야 하므로 로그인 세션의 이름으로 대체한다
     const profile = useQuery({ queryKey: ["member", "me"], queryFn: getMyProfile });
 
     return (
-        <header className="mb-6 flex items-center gap-4 rounded-2xl border-[1.5px] border-line-strong bg-surface px-5 py-4">
-            <div
-                aria-hidden="true"
-                className="h-12 w-12 shrink-0 rounded-full shadow-[inset_0_0_0_1px_var(--color-line-strong)]"
-                style={{
-                    background:
-                        "radial-gradient(circle, var(--color-paper) 0 14%, var(--color-ink) 15% 17%, var(--color-ink) 18% 100%)",
-                }}
-            />
-            <div className="min-w-0">
-                <p className="text-[11px] font-bold uppercase tracking-widest text-faint">마이페이지</p>
-                <h2 className="truncate text-lg font-bold tracking-tight">
-                    {profile.data?.nickname ?? fallbackName}
-                </h2>
-                <p className="truncate text-[13px] text-muted">
-                    {profile.data?.email ?? (profile.isPending ? "불러오는 중…" : "회원 정보를 불러오지 못했습니다")}
-                </p>
-            </div>
-        </header>
+        <div className="mb-4 flex items-baseline gap-3">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-faint">My</p>
+            <h2 className="text-lg font-bold tracking-tight">{profile.data?.nickname ?? fallbackName}</h2>
+            {profile.data?.email && <p className="truncate text-[12.5px] text-muted">{profile.data.email}</p>}
+        </div>
     );
 }
