@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getMyProfile } from "../api/members";
@@ -65,6 +66,7 @@ export function Layout() {
                         ))}
                     </nav>
                     <div className="grow" />
+                    <HeaderSearch />
                     {user ? (
                         <div className="flex items-center gap-2 text-sm">
                             <Link
@@ -110,5 +112,32 @@ export function Layout() {
                 </div>
             </footer>
         </div>
+    );
+}
+
+// 홈 히어로가 검색창에서 피처드 경매로 바뀌면서, 검색 진입은 헤더에 상시 고정한다.
+// 1글자 검색은 카탈로그 화면이 안내 문구로 받아준다
+function HeaderSearch() {
+    const navigate = useNavigate();
+    const [keyword, setKeyword] = useState("");
+
+    function submit(e: React.FormEvent) {
+        e.preventDefault();
+        const next = keyword.trim();
+        if (!next) return;
+        navigate(`/catalog?q=${encodeURIComponent(next)}`);
+        setKeyword("");
+    }
+
+    return (
+        <form onSubmit={submit} className="hidden md:block">
+            <input
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                placeholder="⌕ 앨범, 아티스트 검색"
+                aria-label="카탈로그 검색"
+                className="w-52 rounded-lg border border-line bg-surface px-3 py-1.5 text-[13px] outline-none placeholder:text-faint focus:border-brand"
+            />
+        </form>
     );
 }
