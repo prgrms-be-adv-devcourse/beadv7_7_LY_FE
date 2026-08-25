@@ -18,6 +18,7 @@ const STATUS_LABELS: Record<string, string> = {
     ENDED_WON: "낙찰 완료",
     ENDED_FAILED: "유찰",
     CANCELED: "취소됨",
+    FORCE_CANCELED: "관리자 취소",
 };
 
 function BidBox({ auction }: { auction: AuctionDetail }) {

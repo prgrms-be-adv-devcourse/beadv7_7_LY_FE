@@ -13,6 +13,9 @@ const STATUS_BADGES: Record<string, { label: string; className: string }> = {
     ENDED_WON: { label: "낙찰", className: "bg-up/90 text-white" },
     ENDED_FAILED: { label: "유찰", className: "bg-faint/80 text-white" },
     CLOSING: { label: "처리 중", className: "bg-amber/90 text-white" },
+    // 취소 배지가 없으면 목록에서 진행 중처럼 보인다 (RUNNING만 의도적으로 배지 없음)
+    CANCELED: { label: "취소됨", className: "bg-faint/80 text-white" },
+    FORCE_CANCELED: { label: "관리자 취소", className: "bg-faint/80 text-white" },
 };
 
 export function AuctionCard({ auction, className = "" }: { auction: AuctionListItem; className?: string }) {

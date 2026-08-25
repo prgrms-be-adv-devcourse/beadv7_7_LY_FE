@@ -48,7 +48,14 @@ export interface AuctionPage<T = AuctionListItem> {
     items: T[];
 }
 
-export type AuctionStatus = "SCHEDULED" | "RUNNING" | "CLOSING" | "ENDED_WON" | "ENDED_FAILED" | "CANCELED";
+export type AuctionStatus =
+    | "SCHEDULED"
+    | "RUNNING"
+    | "CLOSING"
+    | "ENDED_WON"
+    | "ENDED_FAILED"
+    | "CANCELED"
+    | "FORCE_CANCELED";
 export type AuctionSort = "ending_soon" | "price_asc" | "price_desc" | "most_bids";
 
 export interface AuctionListParams {
@@ -236,6 +243,7 @@ const STATUS_LABELS: Record<string, string> = {
     ENDED_WON: "낙찰 완료",
     ENDED_FAILED: "유찰",
     CANCELED: "취소됨",
+    FORCE_CANCELED: "관리자 취소",
 };
 
 export function formatAuctionStatus(status: string): string {
