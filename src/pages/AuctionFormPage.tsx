@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useNavigate, useParams } from "react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useBlocker, useLocation, useNavigate, useParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
     AUCTION_POLICY,
@@ -215,6 +215,38 @@ function AuctionForm({
     // 사진을 줄이는 중이면 아직 목록에 안 들어온 사진이 있다 — 그 상태로 저장하면 사진 없이 등록된다
     const [pickerBusy, setPickerBusy] = useState(false);
 
+    // ===== 작성 중 이탈 보호 =====
+    // 사진 압축·업로드까지 한 입력이 실수 한 번(뒤로가기·새로고침)에 통째로 사라지는 걸 막는다.
+    // 기준은 첫 렌더 상태 — 등록이든 수정이든 "열었을 때에서 달라졌나"가 곧 작성 중이라는 뜻
+    const initialSnapshot = useMemo(
+        () => JSON.stringify(values),
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- 첫 렌더 값만 기준으로 삼는다
+        [],
+    );
+    const dirty =
+        JSON.stringify(values) !== initialSnapshot ||
+        images.length !== originalImages.length ||
+        images.some((img) => img.kind !== "remote");
+    // 저장·취소가 끝난 뒤의 페이지 이동은 막으면 안 된다
+    const doneRef = useRef(false);
+
+    const blocker = useBlocker(() => dirty && !doneRef.current);
+    useEffect(() => {
+        if (blocker.state !== "blocked") return;
+        if (window.confirm("작성 중인 내용이 저장되지 않고 사라집니다. 이 화면을 나갈까요?")) blocker.proceed();
+        else blocker.reset();
+    }, [blocker]);
+
+    useEffect(() => {
+        if (!dirty) return;
+        function warn(e: BeforeUnloadEvent) {
+            if (doneRef.current) return;
+            e.preventDefault();
+        }
+        window.addEventListener("beforeunload", warn);
+        return () => window.removeEventListener("beforeunload", warn);
+    }, [dirty]);
+
     const editing = mode === "edit";
     // 시한 판정은 폼에 입력한 값이 아니라 지금 등록돼 있는 시작 시각으로 해야 한다
     const pastDeadline = editing && originalStartAt !== undefined && !isEditableNow(originalStartAt, new Date());
@@ -246,6 +278,7 @@ function AuctionForm({
             return editing ? modifyAuction(auctionId as number, full) : createAuction(full);
         },
         onSuccess: (result) => {
+            doneRef.current = true;
             queryClient.invalidateQueries({ queryKey: ["auctions"] });
             queryClient.invalidateQueries({ queryKey: ["auction", String(result.auctionId)] });
             navigate(`/auctions/${result.auctionId}`);
@@ -259,6 +292,7 @@ function AuctionForm({
     const cancelAuction = useMutation({
         mutationFn: () => deleteAuction(auctionId as number),
         onSuccess: () => {
+            doneRef.current = true;
             queryClient.invalidateQueries({ queryKey: ["auctions"] });
             navigate("/mypage?tab=hosted");
         },
