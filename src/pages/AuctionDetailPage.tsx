@@ -10,6 +10,7 @@ import { WatchButton } from "../components/WatchButton";
 import { formatWon } from "../components/AuctionCard";
 import { VuCountdown } from "./auction-detail/VuCountdown";
 import { BidLog } from "./auction-detail/BidLog";
+import { PriceSummaryBlock } from "./auction-detail/PriceSummaryBlock";
 
 const STATUS_LABELS: Record<string, string> = {
     SCHEDULED: "시작 전",
@@ -54,6 +55,11 @@ function BidBox({ auction }: { auction: AuctionDetail }) {
                 시작가 {formatWon(auction.startBidAmount)} · 입찰 단위 {formatWon(auction.bidUnit)}
             </p>
             {auction.myHighest && <p className="mt-1.5 text-xs font-bold text-up">내가 최고 입찰자입니다</p>}
+            <PriceSummaryBlock
+                productId={auction.product.productId}
+                itemCondition={auction.itemCondition}
+                currentPrice={currentPrice}
+            />
             <VuCountdown startedAt={parseServerTime(auction.startAt)} endsAt={parseServerTime(auction.endAt)} />
             {session ? (
                 <button
