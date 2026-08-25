@@ -21,6 +21,7 @@ export type PointTransactionType =
 export interface PointTransaction {
   transactionId: number;
   type: PointTransactionType;
+  // 부호가 붙어서 온다 — 차감 거래(HOLD·DEPOSIT_CANCEL·WITHDRAW)는 음수
   amount: number;
   // 이름은 auction이지만 실제로는 홀드·충전 등 거래를 만든 쪽의 id가 들어온다
   relatedAuctionId: number | null;
@@ -113,13 +114,6 @@ const TRANSACTION_TYPE_LABELS: Record<string, string> = {
 
 export function formatTransactionType(type: string): string {
   return TRANSACTION_TYPE_LABELS[type] ?? type;
-}
-
-// 잔액이 늘어나는 거래인지 — 목록에서 +/- 부호와 색을 정하는 데 쓴다
-export function isIncomingTransaction(type: string): boolean {
-  return (
-    type === "DEPOSIT" || type === "RELEASE" || type === "SETTLEMENT_PAYOUT"
-  );
 }
 
 // ===== 인출 =====

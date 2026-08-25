@@ -11,7 +11,6 @@ import {
   findDepositId,
   formatTransactionType,
   getWalletBalance,
-  isIncomingTransaction,
   MIN_DEPOSIT_AMOUNT,
   requestDeposit,
   type DepositRequestResult,
@@ -129,7 +128,9 @@ function TransactionRow({ transaction }: { transaction: PointTransaction }) {
   const [reason, setReason] = useState("");
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const incoming = isIncomingTransaction(transaction.type);
+  // 백엔드가 차감 거래(HOLD·DEPOSIT_CANCEL·WITHDRAW)는 음수로 부호를 붙여 내려준다.
+  // 유형표로 다시 부호를 정하면 이중 부호("-₩-5,000")가 되므로 값의 부호를 그대로 쓴다
+  const incoming = transaction.amount > 0;
   const depositId = findDepositId(transaction);
 
   const cancel = useMutation({
@@ -186,7 +187,7 @@ function TransactionRow({ transaction }: { transaction: PointTransaction }) {
           }`}
         >
           {incoming ? "+" : "-"}
-          {formatWon(transaction.amount)}
+          {formatWon(Math.abs(transaction.amount))}
         </span>
       </div>
       {open && depositId !== null && (

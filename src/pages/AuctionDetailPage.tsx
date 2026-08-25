@@ -37,6 +37,9 @@ function BidBox({ auction }: { auction: AuctionDetail }) {
         },
         onError: (error) => {
             setBidError(error instanceof ApiError ? error.message : "입찰 처리 중 문제가 생겼습니다.");
+            // 실패 원인이 대부분 "남이 먼저 입찰해서 최소 입찰가가 올라감"이라, 낡은 금액으로
+            // 같은 실패를 반복하지 않게 바로 다시 읽어온다
+            queryClient.invalidateQueries({ queryKey: ["auction", String(auction.auctionId)] });
         },
     });
 
@@ -164,6 +167,9 @@ export function AuctionDetailPage() {
         queryKey: ["auction", auctionId],
         queryFn: () => getAuctionDetail(auctionId),
         enabled: auctionId !== "",
+        // 전역에서 refetchOnWindowFocus를 꺼놔서, 남이 입찰해도 이 화면은 저절로 갱신되지 않는다.
+        // 진행 중 경매만 주기적으로 다시 읽어 현재가·다음 입찰가를 최신으로 유지한다
+        refetchInterval: (query) => (query.state.data?.status === "RUNNING" ? 5_000 : false),
     });
 
     const auction = auctionQuery.data;

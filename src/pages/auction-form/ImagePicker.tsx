@@ -1,15 +1,22 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type Dispatch, type SetStateAction } from "react";
 
-// 이미지를 올려둘 서버가 없어서, 브라우저에서 줄인 사진을 문자열로 바꿔 경매 정보에 그대로 담는다.
-// 사진 본문이 DB에 들어가는 방식이라 원본을 그대로 담으면 안 된다 — 아래 값으로 줄여서 담는다
+// 사진 실물은 S3에 올라가고 DB에는 주소만 저장된다.
+// 여기서는 사진을 줄여서 들고 있다가, 폼 제출 때 서명된 주소를 받아 S3로 직접 올린다.
 const MAX_EDGE_PX = 720;
 const JPEG_QUALITY = 0.7;
-// 서버는 5장까지 받지만, 사진이 경매 상세 응답에 통째로 실려 나가서 3장으로 묶어둔다
+// 서버는 5장까지 받지만, 상세 화면 레이아웃 기준으로 3장으로 묶어둔다
 export const MAX_ITEM_IMAGES = 3;
 // 줄이기 전에 거르는 크기. 이보다 큰 파일은 브라우저가 여는 동안 화면이 멈춘다
 const MAX_SOURCE_BYTES = 20 * 1024 * 1024;
 
-async function shrinkToDataUrl(file: File): Promise<string> {
+// 폼이 들고 있는 사진 한 장의 상태
+// 이미 서버에 있는 사진 (수정 화면의 기존 사진)
+export type RemoteImage = { kind: "remote"; url: string };
+// 이번에 고른 사진. 올리고 나면 받은 주소를 uploadedUrl에 적어둬서, 저장을 다시 눌러도 또 올리지 않는다
+export type LocalImage = { kind: "local"; blob: Blob; preview: string; uploadedUrl?: string };
+export type PickedImage = RemoteImage | LocalImage;
+
+async function shrinkToBlob(file: File): Promise<LocalImage> {
     // imageOrientation을 지정해야 세로로 찍은 사진이 눕지 않는다
     const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
     const scale = Math.min(1, MAX_EDGE_PX / Math.max(bitmap.width, bitmap.height));
@@ -26,13 +33,9 @@ async function shrinkToDataUrl(file: File): Promise<string> {
     }
     context.drawImage(bitmap, 0, 0, width, height);
     bitmap.close();
-    return canvas.toDataURL("image/jpeg", JPEG_QUALITY);
-}
-
-// 저장될 문자열이 실제로 몇 바이트인지 (사람에게 보여줄 용도)
-function approximateBytes(dataUrl: string): number {
-    const base64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
-    return Math.round((base64.length * 3) / 4);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY));
+    if (blob === null) throw new Error("브라우저가 이미지를 변환하지 못했습니다.");
+    return { kind: "local", blob, preview: URL.createObjectURL(blob) };
 }
 
 function formatBytes(bytes: number): string {
@@ -42,11 +45,16 @@ function formatBytes(bytes: number): string {
 }
 
 interface ImagePickerProps {
-    images: string[];
-    onChange: (images: string[]) => void;
+    images: PickedImage[];
+    // 갱신 함수를 받는다 — 사진을 줄이는 동안 목록이 바뀔 수 있어서, 낡은 배열을 덮어쓰지 않으려면 최신 값 기준으로 더해야 한다
+    onChange: Dispatch<SetStateAction<PickedImage[]>>;
+    // 저장이 진행되는 동안 잠근다. 잠그지 않으면 올리는 중에 뺀 사진이 화면에서만 사라지고 등록에는 그대로 들어간다
+    disabled?: boolean;
+    // 사진을 줄이는 중인지 부모에게 알린다. 폼이 이걸 모르면 줄이는 도중 저장이 눌려 사진 없이 등록된다
+    onBusyChange?: (busy: boolean) => void;
 }
 
-export function ImagePicker({ images, onChange }: ImagePickerProps) {
+export function ImagePicker({ images, onChange, disabled = false, onBusyChange }: ImagePickerProps) {
     const inputRef = useRef<HTMLInputElement>(null);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -54,10 +62,15 @@ export function ImagePicker({ images, onChange }: ImagePickerProps) {
 
     const remaining = MAX_ITEM_IMAGES - images.length;
 
+    function updateBusy(next: boolean) {
+        setBusy(next);
+        onBusyChange?.(next);
+    }
+
     async function addFiles(files: FileList) {
-        setBusy(true);
+        updateBusy(true);
         setError(null);
-        const added: string[] = [];
+        const added: PickedImage[] = [];
         let sourceBytes = 0;
         let resultBytes = 0;
 
@@ -71,26 +84,34 @@ export function ImagePicker({ images, onChange }: ImagePickerProps) {
                     setError(`${file.name}이(가) 너무 큽니다 (${formatBytes(file.size)}). ${formatBytes(MAX_SOURCE_BYTES)} 이하로 골라주세요.`);
                     continue;
                 }
-                const dataUrl = await shrinkToDataUrl(file);
-                added.push(dataUrl);
-                sourceBytes += file.size;
-                resultBytes += approximateBytes(dataUrl);
+                // 한 장이 실패해도 나머지는 살린다 — 전체를 물리면 앞서 고른 사진까지 사라진다
+                try {
+                    const picked = await shrinkToBlob(file);
+                    added.push(picked);
+                    sourceBytes += file.size;
+                    resultBytes += picked.blob.size;
+                } catch (e: unknown) {
+                    const reason = e instanceof Error ? e.message : "알 수 없는 이유";
+                    setError(`${file.name}을(를) 처리하지 못했습니다. (${reason})`);
+                }
             }
             if (added.length > 0) {
-                onChange([...images, ...added]);
+                onChange((current) => [...current, ...added]);
                 setReport(`${formatBytes(sourceBytes)} → ${formatBytes(resultBytes)}로 줄여 담았습니다.`);
             }
-        } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : "사진을 처리하지 못했습니다.");
         } finally {
-            setBusy(false);
+            updateBusy(false);
             // 같은 파일을 다시 고를 수 있게 입력값을 비운다
             if (inputRef.current) inputRef.current.value = "";
         }
     }
 
     function removeAt(index: number) {
-        onChange(images.filter((_, i) => i !== index));
+        if (disabled) return;
+        const target = images[index];
+        // 미리보기용으로 잡아둔 브라우저 메모리를 돌려준다
+        if (target.kind === "local") URL.revokeObjectURL(target.preview);
+        onChange((current) => current.filter((_, i) => i !== index));
         setReport(null);
     }
 
@@ -98,17 +119,18 @@ export function ImagePicker({ images, onChange }: ImagePickerProps) {
         <div>
             <div className="flex flex-wrap gap-2.5">
                 {images.map((image, index) => (
-                    <div key={`${index}-${image.slice(0, 32)}`} className="relative">
+                    <div key={image.kind === "remote" ? image.url : image.preview} className="relative">
                         <img
-                            src={image}
+                            src={image.kind === "remote" ? image.url : image.preview}
                             alt={`매물 사진 ${index + 1}`}
                             className="h-24 w-24 rounded-lg border border-line object-cover"
                         />
                         <button
                             type="button"
                             onClick={() => removeAt(index)}
+                            disabled={disabled}
                             aria-label={`매물 사진 ${index + 1} 빼기`}
-                            className="absolute -right-1.5 -top-1.5 grid h-6 w-6 place-items-center rounded-full border border-line bg-surface text-[13px] font-bold text-muted shadow-sm hover:border-live hover:text-live"
+                            className="absolute -right-1.5 -top-1.5 grid h-6 w-6 place-items-center rounded-full border border-line bg-surface text-[13px] font-bold text-muted shadow-sm hover:border-live hover:text-live disabled:opacity-50"
                         >
                             ×
                         </button>
@@ -118,7 +140,7 @@ export function ImagePicker({ images, onChange }: ImagePickerProps) {
                     <button
                         type="button"
                         onClick={() => inputRef.current?.click()}
-                        disabled={busy}
+                        disabled={busy || disabled}
                         className="grid h-24 w-24 place-items-center rounded-lg border border-dashed border-line-strong bg-paper text-[12px] font-semibold text-muted hover:border-brand hover:text-brand disabled:opacity-50"
                     >
                         {busy ? "줄이는 중…" : `＋ 사진 추가`}

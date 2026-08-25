@@ -30,7 +30,11 @@ async function tryRenewal(): Promise<boolean> {
         const res = await fetch(`${API_BASE_URL}${RENEWAL_PATH}`, { method: "POST", credentials: "include" });
         const body = (await res.json().catch(() => null)) as ApiEnvelope<{ accessToken: string }> | null;
         if (!res.ok || !body || !body.success) {
-            clearSession();
+            // 리프레시 토큰이 진짜 거절된 때(401·403)만 세션을 지운다.
+            // 일시적 서버 장애(5xx)나 게이트웨이 재시작 때문에 로그아웃시키지 않는다
+            if (res.status === 401 || res.status === 403) {
+                clearSession();
+            }
             return false;
         }
         const session = loadSession();
@@ -80,11 +84,15 @@ export function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> {
     return request<T>(path, { headers: memberHeaders(), signal });
 }
 
-export function apiPost<T>(path: string, payload?: unknown): Promise<T> {
+// credentials: 리프레시 토큰 쿠키를 주고받는 인증 API(login·logout)만 "include"를 준다.
+// 교차 출처 배포(프론트 vercel ↔ 백엔드 EC2)에서는 이게 없으면 응답의 Set-Cookie를
+// 브라우저가 버려서, 쿠키가 저장되지 않아 토큰 갱신이 항상 실패한다
+export function apiPost<T>(path: string, payload?: unknown, credentials?: RequestCredentials): Promise<T> {
     return request<T>(path, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...memberHeaders() },
         body: payload === undefined ? undefined : JSON.stringify(payload),
+        credentials,
     });
 }
 
@@ -104,6 +112,6 @@ export function apiPatch<T>(path: string, payload?: unknown): Promise<T> {
     });
 }
 
-export function apiDelete<T>(path: string): Promise<T> {
-    return request<T>(path, { method: "DELETE", headers: memberHeaders() });
+export function apiDelete<T>(path: string, credentials?: RequestCredentials): Promise<T> {
+    return request<T>(path, { method: "DELETE", headers: memberHeaders(), credentials });
 }

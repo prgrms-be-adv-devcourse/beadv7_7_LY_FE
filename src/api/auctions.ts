@@ -6,6 +6,8 @@ export const AUCTION_POLICY = {
     MIN_DESC_LENGTH: 10,
     MAX_DESC_LENGTH: 500,
     MAX_IMAGE_COUNT: 5,
+    // 이미지 한 장 최대 크기 (백엔드 AuctionPolicy.MAX_IMAGE_BYTES와 동일)
+    MAX_IMAGE_BYTES: 5 * 1024 * 1024,
     MIN_START_PRICE: 1000,
     MIN_BID_UNIT: 100,
     // 등록할 때 시작 시각은 지금으로부터 최소 이만큼 뒤여야 한다
@@ -242,4 +244,17 @@ export function formatAuctionStatus(status: string): string {
 
 export function parseServerTime(value: string): number {
     return new Date(value).getTime();
+}
+
+// POST /api/v1/auctions/images/presign — 사진 파일 정보를 보내 업로드용/공개용 주소 쌍을 받는다.
+// 실물 파일은 브라우저가 uploadUrl로 S3에 직접 올리고, 등록 요청에는 imageUrl만 담는다
+export interface PresignedImage {
+    uploadUrl: string;
+    imageUrl: string;
+}
+
+export function presignAuctionImages(
+    files: { contentType: string; contentLength: number }[],
+): Promise<{ presignedImages: PresignedImage[] }> {
+    return apiPost("/api/v1/auctions/images/presign", { files });
 }

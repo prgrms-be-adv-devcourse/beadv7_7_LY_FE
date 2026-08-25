@@ -141,8 +141,10 @@ function OrderRow({ order, perspective, opened, onToggle }: OrderRowProps) {
     const [actionError, setActionError] = useState<string | null>(null);
     const [placing, setPlacing] = useState(false);
 
-    // 완료·취소는 백엔드가 X-Member-Id를 구매자로 보고 검증한다 — 판매 관점에서는 버튼을 내린다
-    const canAct = perspective === "BUYER" && order.status === "ORDERED";
+    // 완료·취소는 백엔드가 X-Member-Id를 구매자로 보고 검증한다 — 판매 관점에서는 버튼을 내린다.
+    // 백엔드 상태 전이: 취소는 PENDING에서만, 확정은 ORDERED에서만 허용된다
+    const canComplete = perspective === "BUYER" && order.status === "ORDERED";
+    const canCancel = perspective === "BUYER" && order.status === "PENDING";
     // 낙찰 직후 주문은 결제 대기 상태로 만들어진다. 배송지를 넣어야 주문 완료로 넘어간다
     const canPlace = perspective === "BUYER" && order.status === "PENDING";
 
@@ -214,25 +216,25 @@ function OrderRow({ order, perspective, opened, onToggle }: OrderRowProps) {
                         {placing ? "배송지 입력 닫기" : "배송지 입력하고 주문하기"}
                     </button>
                 )}
-                {canAct && (
-                    <>
-                        <button
-                            type="button"
-                            disabled={acting}
-                            onClick={() => completeMutation.mutate()}
-                            className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-ink disabled:opacity-50"
-                        >
-                            거래 확정
-                        </button>
-                        <button
-                            type="button"
-                            disabled={acting}
-                            onClick={() => cancelMutation.mutate()}
-                            className="rounded-lg border border-line bg-paper px-3 py-1.5 text-xs font-semibold text-muted hover:border-line-strong hover:text-ink disabled:opacity-50"
-                        >
-                            주문 취소
-                        </button>
-                    </>
+                {canComplete && (
+                    <button
+                        type="button"
+                        disabled={acting}
+                        onClick={() => completeMutation.mutate()}
+                        className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-ink disabled:opacity-50"
+                    >
+                        거래 확정
+                    </button>
+                )}
+                {canCancel && (
+                    <button
+                        type="button"
+                        disabled={acting}
+                        onClick={() => cancelMutation.mutate()}
+                        className="rounded-lg border border-line bg-paper px-3 py-1.5 text-xs font-semibold text-muted hover:border-line-strong hover:text-ink disabled:opacity-50"
+                    >
+                        주문 취소
+                    </button>
                 )}
                 {order.confirmationDeadline && order.status === "PENDING" && (
                     <span className="text-[11px] text-muted">
