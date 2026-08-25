@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatCondition, getAuctionDetail, parseServerTime, placeBid, type AuctionDetail } from "../api/auctions";
 import { ApiError } from "../api/client";
-import { loadSession } from "../auth/session";
+import { useSession } from "../auth/session";
 import { VinylCover } from "../components/VinylCover";
 import { QueryState } from "../components/QueryState";
 import { WatchButton } from "../components/WatchButton";
@@ -24,7 +24,7 @@ function BidBox({ auction }: { auction: AuctionDetail }) {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [bidError, setBidError] = useState<string | null>(null);
-    const session = loadSession();
+    const session = useSession();
 
     const currentPrice = auction.highestBidAmount ?? auction.startBidAmount;
     const nextBid = auction.nextMinBidAmount ?? auction.startBidAmount;

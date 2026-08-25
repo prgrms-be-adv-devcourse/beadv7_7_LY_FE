@@ -4,12 +4,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AuctionStatus } from "../api/auctions";
 import { fetchWatchedAuctions, toWatchedAuctionIds, unwatchAuction, watchAuction } from "../api/watchlist";
 import { ApiError } from "../api/client";
-import { loadSession } from "../auth/session";
+import { useSession } from "../auth/session";
 
 export const WATCHED_AUCTIONS_KEY = ["watchlist", "auctions"];
 
 export function useWatchedAuctions() {
-    const session = loadSession();
+    const session = useSession();
     return useQuery({
         queryKey: WATCHED_AUCTIONS_KEY,
         queryFn: fetchWatchedAuctions,
@@ -34,7 +34,7 @@ export function WatchButton({ auctionId, status, variant = "overlay" }: WatchBut
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [error, setError] = useState<string | null>(null);
-    const session = loadSession();
+    const session = useSession();
     const watched = useWatchedAuctions();
     const isWatched = watched.data ? toWatchedAuctionIds(watched.data).has(auctionId) : false;
 

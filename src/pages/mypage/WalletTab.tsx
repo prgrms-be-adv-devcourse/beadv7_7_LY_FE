@@ -20,7 +20,7 @@ import { ApiError } from "../../api/client";
 import { formatWon } from "../../components/AuctionCard";
 import { QueryState } from "../../components/QueryState";
 import { Pagination } from "../../components/Pagination";
-import { loadSession } from "../../auth/session";
+import { useSession } from "../../auth/session";
 import { DateRangeFilter } from "./DateRangeFilter";
 import { TossPaymentWidget } from "./TossPaymentWidget";
 import { formatDateTime, toRangeEnd, toRangeStart } from "./format";
@@ -255,7 +255,7 @@ function BalanceCard() {
 
 function DepositForm() {
   const queryClient = useQueryClient();
-  const session = loadSession();
+  const session = useSession();
   const [amount, setAmount] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [issued, setIssued] = useState<DepositRequestResult | null>(null);

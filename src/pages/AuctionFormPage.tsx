@@ -12,7 +12,7 @@ import {
     type AuctionPayload,
 } from "../api/auctions";
 import { ApiError } from "../api/client";
-import { loadSession } from "../auth/session";
+import { useSession } from "../auth/session";
 import { QueryState } from "../components/QueryState";
 import { formatWon } from "../components/AuctionCard";
 import { ProductPicker, type PickedProduct } from "./auction-form/ProductPicker";
@@ -48,7 +48,7 @@ function emptyValues(now: Date): AuctionFormValues {
 export function AuctionFormPage() {
     const { auctionId } = useParams();
     const editing = auctionId !== undefined;
-    const session = loadSession();
+    const session = useSession();
 
     if (!session) {
         return (

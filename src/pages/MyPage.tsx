@@ -1,7 +1,7 @@
 import { Link, useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getMyProfile } from "../api/members";
-import { loadSession } from "../auth/session";
+import { useSession } from "../auth/session";
 import { OrdersTab } from "./mypage/OrdersTab";
 import { SettlementsTab } from "./mypage/SettlementsTab";
 import { WalletTab } from "./mypage/WalletTab";
@@ -24,7 +24,7 @@ type TabValue = (typeof TABS)[number]["value"];
 
 export function MyPage() {
     const [searchParams, setSearchParams] = useSearchParams();
-    const session = loadSession();
+    const session = useSession();
     const tabParam = searchParams.get("tab");
     const tab: TabValue = TABS.some((t) => t.value === tabParam) ? (tabParam as TabValue) : "orders";
 

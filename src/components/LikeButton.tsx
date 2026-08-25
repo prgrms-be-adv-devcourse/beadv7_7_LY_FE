@@ -3,13 +3,13 @@ import { useNavigate } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchLikedProductIds, likeProduct, unlikeProduct } from "../api/wishlist";
 import { ApiError } from "../api/client";
-import { loadSession } from "../auth/session";
+import { useSession } from "../auth/session";
 
 export const LIKED_IDS_KEY = ["wishlist", "likedIds"];
 
 // 찜한 상품 id 집합. 카드가 여러 개 붙어도 같은 쿼리 키를 쓰므로 요청은 화면당 한 번만 나간다
 export function useLikedProductIds() {
-    const session = loadSession();
+    const session = useSession();
     return useQuery({
         queryKey: LIKED_IDS_KEY,
         queryFn: fetchLikedProductIds,
@@ -28,7 +28,7 @@ export function LikeButton({ productId, variant = "overlay" }: LikeButtonProps) 
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [error, setError] = useState<string | null>(null);
-    const session = loadSession();
+    const session = useSession();
     const likedIds = useLikedProductIds();
     const liked = likedIds.data?.has(productId) ?? false;
 
