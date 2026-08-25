@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
     AUCTION_POLICY,
@@ -46,6 +46,7 @@ function emptyValues(now: Date): AuctionFormValues {
 }
 
 export function AuctionFormPage() {
+    const location = useLocation();
     const { auctionId } = useParams();
     const editing = auctionId !== undefined;
     const session = useSession();
@@ -57,6 +58,7 @@ export function AuctionFormPage() {
                 <p className="mt-1 text-sm text-muted">경매는 본인 계정으로만 등록할 수 있습니다.</p>
                 <Link
                     to="/login"
+                    state={{ from: location.pathname }}
                     className="mt-4 inline-block rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-ink"
                 >
                     로그인하러 가기

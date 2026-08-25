@@ -1,4 +1,4 @@
-import { Link, useSearchParams } from "react-router";
+import { Link, useLocation, useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getMyProfile } from "../api/members";
 import { useSession } from "../auth/session";
@@ -38,6 +38,7 @@ const ALL_TAB_VALUES: readonly string[] = TAB_GROUPS.flatMap((group) => group.ta
 
 export function MyPage() {
     const [searchParams, setSearchParams] = useSearchParams();
+    const location = useLocation();
     const session = useSession();
     const tabParam = searchParams.get("tab");
     const tab: TabValue = ALL_TAB_VALUES.includes(tabParam ?? "") ? (tabParam as TabValue) : "participated";
@@ -53,6 +54,7 @@ export function MyPage() {
                 <p className="mt-1 text-sm text-muted">주문·정산·지갑 내역은 본인 계정으로만 볼 수 있습니다.</p>
                 <Link
                     to="/login"
+                    state={{ from: location.pathname + location.search }}
                     className="mt-4 inline-block rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-ink"
                 >
                     로그인하러 가기

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, NavLink, Outlet, useNavigate } from "react-router";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getMyProfile } from "../api/members";
 import { logoutServer } from "../api/auth";
@@ -17,6 +17,7 @@ export function Layout() {
     const queryClient = useQueryClient();
     // 세션 변경(로그인·로그아웃·갱신 실패로 삭제)을 구독해서, 세션이 지워지면 헤더도 즉시 바뀐다
     const session = useSession();
+    const location = useLocation();
 
     // 로그인 응답에는 토큰만 들어 있어서 세션 이름은 이메일 앞부분(test123@... → test123)이다.
     // 헤더에는 회원 정보의 닉네임을 쓰되, 아직 못 받았거나 조회가 실패하면 세션 이름으로 대신한다.
@@ -93,7 +94,11 @@ export function Layout() {
                         </div>
                     ) : (
                         <div className="flex items-center gap-2">
-                            <Link to="/login" className="rounded-lg border border-line bg-surface px-3 py-1.5 text-sm font-semibold hover:border-line-strong">
+                            <Link
+                                to="/login"
+                                state={{ from: location.pathname + location.search }}
+                                className="rounded-lg border border-line bg-surface px-3 py-1.5 text-sm font-semibold hover:border-line-strong"
+                            >
                                 로그인
                             </Link>
                             <Link to="/signup" className="rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-ink">

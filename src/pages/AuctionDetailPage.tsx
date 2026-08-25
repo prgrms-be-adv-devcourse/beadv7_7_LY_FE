@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatCondition, getAuctionDetail, parseServerTime, placeBid, type AuctionDetail } from "../api/auctions";
 import { ApiError } from "../api/client";
@@ -25,6 +25,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 function BidBox({ auction }: { auction: AuctionDetail }) {
     const navigate = useNavigate();
+    const location = useLocation();
     const queryClient = useQueryClient();
     const [bidError, setBidError] = useState<string | null>(null);
     const session = useSession();
@@ -76,7 +77,8 @@ function BidBox({ auction }: { auction: AuctionDetail }) {
             ) : (
                 <button
                     type="button"
-                    onClick={() => navigate("/login")}
+                    // 로그인 후 이 경매로 돌아온다 — 홈에 떨어뜨리면 다시 찾아와야 한다
+                    onClick={() => navigate("/login", { state: { from: location.pathname } })}
                     className="mt-4 w-full rounded-xl border-[1.5px] border-line-strong bg-paper py-3.5 text-[15px] font-extrabold transition-colors hover:border-brand hover:text-brand"
                 >
                     로그인 후 입찰하기
