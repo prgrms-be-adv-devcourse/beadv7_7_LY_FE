@@ -69,6 +69,14 @@ export function Layout() {
                     </nav>
                     <div className="grow" />
                     <HeaderSearch />
+                    {/* 좁은 화면에선 검색창이 숨으므로 아이콘으로 카탈로그(검색 화면) 진입을 보장한다 */}
+                    <Link
+                        to="/catalog"
+                        aria-label="카탈로그 검색"
+                        className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-muted hover:border-line-strong hover:text-ink md:hidden"
+                    >
+                        ⌕
+                    </Link>
                     {user ? (
                         <div className="flex items-center gap-2 text-sm">
                             <Link
