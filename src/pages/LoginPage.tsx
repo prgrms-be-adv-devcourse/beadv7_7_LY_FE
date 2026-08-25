@@ -6,7 +6,8 @@ import { ApiError } from "../api/client";
 export function LoginPage() {
     const navigate = useNavigate();
     const location = useLocation();
-    const signedUp = Boolean((location.state as { signedUp?: boolean } | null)?.signedUp);
+    const state = location.state as { signedUp?: boolean; from?: string } | null;
+    const signedUp = Boolean(state?.signedUp);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState<string | null>(null);
@@ -22,7 +23,8 @@ export function LoginPage() {
         setError(null);
         try {
             await login(email.trim(), password);
-            navigate("/");
+            // 찜·관심 등록하려다 온 경우 보던 자리로 되돌려보낸다 (토스트의 로그인 버튼이 from을 실어 보냄)
+            navigate(state?.from ?? "/", { replace: true });
         } catch (err) {
             setError(err instanceof ApiError ? err.message : "로그인 처리 중 문제가 생겼습니다.");
         } finally {

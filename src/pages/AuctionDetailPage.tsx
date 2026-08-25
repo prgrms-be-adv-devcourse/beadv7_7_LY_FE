@@ -8,6 +8,7 @@ import { VinylCover } from "../components/VinylCover";
 import { QueryState } from "../components/QueryState";
 import { WatchButton } from "../components/WatchButton";
 import { formatWon } from "../components/AuctionCard";
+import { showToast } from "../components/Toasts";
 import { VuCountdown } from "./auction-detail/VuCountdown";
 import { BidLog } from "./auction-detail/BidLog";
 import { PriceSummaryBlock } from "./auction-detail/PriceSummaryBlock";
@@ -36,6 +37,8 @@ function BidBox({ auction }: { auction: AuctionDetail }) {
         onSuccess: () => {
             setBidError(null);
             queryClient.invalidateQueries({ queryKey: ["auction", String(auction.auctionId)] });
+            // 실패만 알리고 성공은 조용하던 비대칭을 메운다 — 핵심 액션엔 성공 확인이 필요
+            showToast(`${formatWon(nextBid)} 입찰 완료 — 현재 최고 입찰자입니다`);
         },
         onError: (error) => {
             setBidError(error instanceof ApiError ? error.message : "입찰 처리 중 문제가 생겼습니다.");

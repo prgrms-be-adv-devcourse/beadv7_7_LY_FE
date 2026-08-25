@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AuctionStatus } from "../api/auctions";
 import { fetchWatchedAuctions, toWatchedAuctionIds, unwatchAuction, watchAuction } from "../api/watchlist";
 import { ApiError } from "../api/client";
 import { useSession } from "../auth/session";
+import { showToast } from "./Toasts";
 
 export const WATCHED_AUCTIONS_KEY = ["watchlist", "auctions"];
 
@@ -31,7 +31,6 @@ interface WatchButtonProps {
 }
 
 export function WatchButton({ auctionId, status, variant = "overlay" }: WatchButtonProps) {
-    const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [error, setError] = useState<string | null>(null);
     const session = useSession();
@@ -56,7 +55,8 @@ export function WatchButton({ auctionId, status, variant = "overlay" }: WatchBut
         e.preventDefault();
         e.stopPropagation();
         if (!session) {
-            navigate("/login");
+            // 화면을 끌고 가지 않고 알려만 준다 — 로그인할지는 사용자가 정한다
+            showToast("관심 경매로 등록하려면 로그인이 필요해요", { label: "로그인", to: "/login" });
             return;
         }
         toggle.mutate();

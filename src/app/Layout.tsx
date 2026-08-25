@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getMyProfile } from "../api/members";
 import { logoutServer } from "../api/auth";
 import { clearSession, useSession } from "../auth/session";
+import { Toasts } from "../components/Toasts";
 
 const TABS = [
     { to: "/", label: "홈" },
@@ -111,6 +112,7 @@ export function Layout() {
                     <span className="ml-2">희귀 LP를 경매로 사고파는 곳</span>
                 </div>
             </footer>
+            <Toasts />
         </div>
     );
 }

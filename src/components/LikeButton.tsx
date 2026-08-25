@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchLikedProductIds, likeProduct, unlikeProduct } from "../api/wishlist";
 import { ApiError } from "../api/client";
 import { useSession } from "../auth/session";
+import { showToast } from "./Toasts";
 
 export const LIKED_IDS_KEY = ["wishlist", "likedIds"];
 
@@ -25,7 +25,6 @@ interface LikeButtonProps {
 }
 
 export function LikeButton({ productId, variant = "overlay" }: LikeButtonProps) {
-    const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [error, setError] = useState<string | null>(null);
     const session = useSession();
@@ -51,7 +50,8 @@ export function LikeButton({ productId, variant = "overlay" }: LikeButtonProps) 
         e.preventDefault();
         e.stopPropagation();
         if (!session) {
-            navigate("/login");
+            // 화면을 끌고 가지 않고 알려만 준다 — 로그인할지는 사용자가 정한다
+            showToast("찜하려면 로그인이 필요해요", { label: "로그인", to: "/login" });
             return;
         }
         toggle.mutate();
