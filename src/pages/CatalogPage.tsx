@@ -157,7 +157,7 @@ export function CatalogPage() {
     }
 
     const query = useQuery({
-        queryKey: ["productSearch", urlQuery, page],
+        queryKey: ["productSearch", "catalog", urlQuery, page],
         // React Query가 주는 AbortSignal을 fetch까지 관통시킨다 —
         // 새 검색을 하면 이전 검색 요청이 취소되고, 연결이 끊기면 서버 쿼리도 중단된다
         queryFn: ({ signal }) => searchProducts(urlQuery, page, PAGE_SIZE, signal),

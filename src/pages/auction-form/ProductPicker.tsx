@@ -24,7 +24,9 @@ export function ProductPicker({ picked, onPick }: ProductPickerProps) {
     const [tooShort, setTooShort] = useState(false);
 
     const results = useQuery({
-        queryKey: ["productSearch", submitted, 0],
+        // 키에 "picker"를 넣어 카탈로그 검색과 캐시를 분리한다 — 같은 키를 쓰면 요청 크기가
+        // 다른(8건 vs 20건) 두 화면이 서로의 응답을 재사용해 결과 수가 틀리게 보인다
+        queryKey: ["productSearch", "picker", submitted],
         queryFn: ({ signal }) => searchProducts(submitted, 0, 8, signal),
         enabled: submitted.length >= 2 && picked === null,
         retry: 0,
