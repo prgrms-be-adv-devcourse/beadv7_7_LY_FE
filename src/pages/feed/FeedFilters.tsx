@@ -10,8 +10,20 @@ interface FeedFiltersProps {
     onChange: (patch: Partial<Record<"genre" | "pressType" | "status" | "sort", string | null>>) => void;
 }
 
-// 시드 데이터에서 실제로 쓰이는 장르 위주
-const GENRES = ["Rock", "Pop", "K-Pop", "Jazz", "Ballad", "R&B", "Folk", "Electronic", "Metal", "Soul"];
+// 백엔드가 product.genre와 정확 일치로 비교하므로 DB에 실재하는 값(Discogs 장르 표기)만 넣는다.
+// 목록은 시드 데이터의 상위 장르 순 — 여기 없는 값을 넣으면 그 필터는 항상 0건이 된다
+const GENRES = [
+    "Rock",
+    "Jazz",
+    "Classical",
+    "Electronic",
+    "Folk, World, & Country",
+    "Pop",
+    "Funk / Soul",
+    "Hip Hop",
+    "Reggae",
+    "Blues",
+];
 
 const PRESS_TYPES = [
     { value: "ORIGINAL", label: "오리지널" },

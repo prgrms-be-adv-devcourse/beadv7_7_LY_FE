@@ -130,6 +130,9 @@ export function CatalogPage() {
     const [searchParams, setSearchParams] = useSearchParams();
     const urlQuery = searchParams.get("q") ?? "";
     const page = Math.max(0, Number(searchParams.get("page") ?? "0") || 0);
+    // URL로 1글자 검색어가 들어올 수 있다(홈 검색창엔 길이 제한이 없다). 그때 쿼리는 enabled=false로
+    // 영원히 pending이므로, 화면 분기도 같은 기준을 써야 스켈레톤이 무한히 돌지 않는다
+    const isSearchActive = urlQuery.trim().length >= 2;
 
     const [input, setInput] = useState(urlQuery);
     const [tooShort, setTooShort] = useState(false);
@@ -158,7 +161,7 @@ export function CatalogPage() {
         // React Query가 주는 AbortSignal을 fetch까지 관통시킨다 —
         // 새 검색을 하면 이전 검색 요청이 취소되고, 연결이 끊기면 서버 쿼리도 중단된다
         queryFn: ({ signal }) => searchProducts(urlQuery, page, PAGE_SIZE, signal),
-        enabled: urlQuery.trim().length >= 2,
+        enabled: isSearchActive,
         placeholderData: keepPreviousData,
         // 실패한 검색을 재시도하면 힘든 서버를 더 힘들게 만든다
         retry: 0,
@@ -189,12 +192,12 @@ export function CatalogPage() {
                         {query.isFetching ? "검색 중…" : "검색"}
                     </button>
                 </div>
-                {tooShort && (
+                {(tooShort || urlQuery.trim().length === 1) && (
                     <p className="mt-1.5 text-[12px] font-semibold text-live">검색어를 2글자 이상 입력해주세요.</p>
                 )}
             </form>
 
-            {urlQuery.trim() === "" ? (
+            {!isSearchActive ? (
                 <BrowseList page={page} onPage={(next) => setSearchParams({ page: String(next) })} />
             ) : (
                 <QueryState
