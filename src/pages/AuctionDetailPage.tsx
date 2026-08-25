@@ -228,7 +228,7 @@ export function AuctionDetailPage() {
                                         </Link>
                                     </h1>
                                     <p className="mt-1 text-base font-bold text-brand">{auction.product.artistName}</p>
-                                    <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-5 gap-y-2 text-[13.5px]">
+                                    <dl className="mt-5 grid w-fit grid-cols-3 gap-x-9 gap-y-3.5 border-t border-line pt-4">
                                         {[
                                             ["컨디션", formatCondition(auction.itemCondition)],
                                             ["프레스", auction.product.pressType === "ORIGINAL" ? "오리지널" : "재발매"],
@@ -236,9 +236,11 @@ export function AuctionDetailPage() {
                                             ["판매자", auction.seller.nickname],
                                             ["상태", STATUS_LABELS[auction.status] ?? auction.status],
                                         ].map(([label, value]) => (
-                                            <div key={label} className="contents">
-                                                <dt className="font-semibold text-faint">{label}</dt>
-                                                <dd className="m-0 font-semibold">{value || "—"}</dd>
+                                            <div key={label}>
+                                                <dt className="text-[10px] font-bold uppercase tracking-[0.1em] text-faint">
+                                                    {label}
+                                                </dt>
+                                                <dd className="m-0 mt-0.5 text-[14px] font-bold">{value || "—"}</dd>
                                             </div>
                                         ))}
                                     </dl>
