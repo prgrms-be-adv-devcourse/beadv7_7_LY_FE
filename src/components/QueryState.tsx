@@ -7,10 +7,12 @@ interface QueryStateProps {
     isEmpty: boolean;
     emptyMessage: ReactNode;
     loadingFallback?: ReactNode;
+    // 실패 시 다시 시도 동작 — 넘기지 않으면 새로고침으로 대신한다 (막다른 골목 방지)
+    onRetry?: () => void;
     children: ReactNode;
 }
 
-export function QueryState({ isLoading, error, isEmpty, emptyMessage, loadingFallback, children }: QueryStateProps) {
+export function QueryState({ isLoading, error, isEmpty, emptyMessage, loadingFallback, onRetry, children }: QueryStateProps) {
     if (isLoading) {
         return (
             loadingFallback ?? (
@@ -28,7 +30,13 @@ export function QueryState({ isLoading, error, isEmpty, emptyMessage, loadingFal
             <div className="rounded-xl border border-live/30 bg-live-bg px-5 py-8 text-center">
                 <p className="font-semibold text-live">{message}</p>
                 {code && <p className="mt-1 font-mono text-xs text-muted">{code}</p>}
-                <p className="mt-2 text-sm text-muted">잠시 후 새로고침해주세요.</p>
+                <button
+                    type="button"
+                    onClick={onRetry ?? (() => window.location.reload())}
+                    className="mt-4 rounded-lg border border-line bg-surface px-4 py-2 text-sm font-semibold hover:border-line-strong"
+                >
+                    다시 시도
+                </button>
             </div>
         );
     }

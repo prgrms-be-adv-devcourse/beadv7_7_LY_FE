@@ -52,6 +52,7 @@ export function FeedPage() {
             <QueryState
                 isLoading={query.isPending}
                 error={query.error}
+                onRetry={() => query.refetch()}
                 isEmpty={!query.data || query.data.items.length === 0}
                 emptyMessage={
                     <div>

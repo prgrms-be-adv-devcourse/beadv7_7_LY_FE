@@ -190,6 +190,7 @@ export function AuctionDetailPage() {
         <QueryState
             isLoading={auctionQuery.isPending}
             error={auctionQuery.error}
+            onRetry={() => auctionQuery.refetch()}
             isEmpty={!auction}
             emptyMessage={
                 <div>

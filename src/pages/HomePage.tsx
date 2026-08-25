@@ -68,6 +68,7 @@ export function HomePage() {
                 <QueryState
                     isLoading={ending.isPending}
                     error={ending.error}
+                    onRetry={() => ending.refetch()}
                     isEmpty={!ending.data || ending.data.items.length === 0}
                     emptyMessage="진행 중인 경매가 없습니다."
                 >
@@ -92,6 +93,7 @@ export function HomePage() {
                 <QueryState
                     isLoading={live.isPending}
                     error={live.error}
+                    onRetry={() => live.refetch()}
                     isEmpty={liveRest.length === 0}
                     emptyMessage="진행 중인 경매가 없습니다."
                 >
