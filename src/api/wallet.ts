@@ -2,73 +2,83 @@ import { apiGet, apiPost } from "./client";
 
 // pointwallet-service /api/v1/wallet — 홀드는 잔액에서 즉시 빠지는 모델이라 이 값이 곧 입찰 가능액이다
 export interface WalletBalance {
-    availableBalance: number;
+  availableBalance: number;
 }
 
 export function getWalletBalance(): Promise<WalletBalance> {
-    return apiGet<WalletBalance>("/api/v1/wallet");
+  return apiGet<WalletBalance>("/api/v1/wallet");
 }
 
 export type PointTransactionType =
-    | "DEPOSIT"
-    | "HOLD"
-    | "RELEASE"
-    | "DEPOSIT_CANCEL"
-    | "WITHDRAW"
-    | "FEE_INCOME"
-    | "SETTLEMENT_PAYOUT";
+  | "DEPOSIT"
+  | "HOLD"
+  | "RELEASE"
+  | "DEPOSIT_CANCEL"
+  | "WITHDRAW"
+  | "FEE_INCOME"
+  | "SETTLEMENT_PAYOUT";
 
 export interface PointTransaction {
-    transactionId: number;
-    type: PointTransactionType;
-    // 부호가 붙어서 온다 — 차감 거래(HOLD·DEPOSIT_CANCEL·WITHDRAW)는 음수
-    amount: number;
-    // 이름은 auction이지만 실제로는 홀드·충전 등 거래를 만든 쪽의 id가 들어온다
-    relatedAuctionId: number | null;
-    createdAt: string;
+  transactionId: number;
+  type: PointTransactionType;
+  // 부호가 붙어서 온다 — 차감 거래(HOLD·DEPOSIT_CANCEL·WITHDRAW)는 음수
+  amount: number;
+  // 이름은 auction이지만 실제로는 홀드·충전 등 거래를 만든 쪽의 id가 들어온다
+  relatedAuctionId: number | null;
+  createdAt: string;
 }
 
 // 다른 목록 API와 달리 totalElements·last가 없다 (백엔드 PointTransactionHistoryResponse 그대로)
 export interface PointTransactionPage {
-    content: PointTransaction[];
-    page: number;
-    totalPages: number;
+  content: PointTransaction[];
+  page: number;
+  totalPages: number;
 }
 
 export interface PointTransactionParams {
-    type?: string;
-    from?: string;
-    to?: string;
-    page?: number;
-    size?: number;
+  type?: string;
+  from?: string;
+  to?: string;
+  page?: number;
+  size?: number;
 }
 
-export function fetchPointTransactions(params: PointTransactionParams): Promise<PointTransactionPage> {
-    const query = new URLSearchParams();
-    if (params.type) query.set("type", params.type);
-    if (params.from) query.set("from", params.from);
-    if (params.to) query.set("to", params.to);
-    query.set("page", String(params.page ?? 0));
-    query.set("size", String(params.size ?? 20));
-    return apiGet<PointTransactionPage>(`/api/v1/wallet/transactions?${query}`);
+export function fetchPointTransactions(
+  params: PointTransactionParams,
+): Promise<PointTransactionPage> {
+  const query = new URLSearchParams();
+  if (params.type) query.set("type", params.type);
+  if (params.from) query.set("from", params.from);
+  if (params.to) query.set("to", params.to);
+  query.set("page", String(params.page ?? 0));
+  query.set("size", String(params.size ?? 20));
+  return apiGet<PointTransactionPage>(`/api/v1/wallet/transactions?${query}`);
 }
 
 // POST /api/v1/deposits — 충전 요청만 만든다. 실제 입금은 결제사 결제까지 끝나야 반영된다
 export const MIN_DEPOSIT_AMOUNT = 1000;
 
 export interface DepositRequestResult {
-    orderId: string;
-    amount: number;
+  orderId: string;
+  amount: number;
 }
 
 export function requestDeposit(amount: number): Promise<DepositRequestResult> {
-    return apiPost<DepositRequestResult>("/api/v1/deposits", { amount });
+  return apiPost<DepositRequestResult>("/api/v1/deposits", { amount });
 }
 
 // POST /api/v1/deposits/confirm — 결제사에서 결제를 마치고 돌아왔을 때 부른다.
 // 이걸 불러야 백엔드가 결제사에 승인을 요청하고 잔액에 반영한다
-export function confirmDeposit(paymentKey: string, orderId: string, amount: number): Promise<void> {
-    return apiPost<void>("/api/v1/deposits/confirm", { paymentKey, orderId, amount });
+export function confirmDeposit(
+  paymentKey: string,
+  orderId: string,
+  amount: number,
+): Promise<void> {
+  return apiPost<void>("/api/v1/deposits/confirm", {
+    paymentKey,
+    orderId,
+    amount,
+  });
 }
 
 // 이 충전은 이미 반영이 끝났다는 응답. 앞선 시도가 통과한 뒤 한 번 더 부르면 이게 온다
@@ -79,26 +89,80 @@ export const DEPOSIT_PG_ERROR = "DERR-3008";
 
 // POST /api/v1/deposits/{depositId}/cancel — 충전을 되돌린다.
 // 서버가 사유를 필수로 받고, 잔액이 충전액보다 적으면 거절한다
-export function cancelDeposit(depositId: number, reason: string): Promise<void> {
-    return apiPost<void>(`/api/v1/deposits/${depositId}/cancel`, { reason });
+export function cancelDeposit(
+  depositId: number,
+  reason: string,
+): Promise<void> {
+  return apiPost<void>(`/api/v1/deposits/${depositId}/cancel`, { reason });
 }
 
 // 충전 요청 응답에는 취소에 쓸 id가 없다. 대신 충전이 반영될 때 남는 거래 기록에
 // 그 충전 건의 id가 함께 저장되므로, 충전 기록에서 되짚어 쓴다
 export function findDepositId(transaction: PointTransaction): number | null {
-    return transaction.type === "DEPOSIT" ? transaction.relatedAuctionId : null;
+  return transaction.type === "DEPOSIT" ? transaction.relatedAuctionId : null;
 }
 
 const TRANSACTION_TYPE_LABELS: Record<string, string> = {
-    DEPOSIT: "충전",
-    HOLD: "입찰 보증금 차감",
-    RELEASE: "입찰 보증금 반환",
-    DEPOSIT_CANCEL: "충전 취소",
-    WITHDRAW: "출금",
-    FEE_INCOME: "수수료",
-    SETTLEMENT_PAYOUT: "정산 입금",
+  DEPOSIT: "충전",
+  HOLD: "입찰 보증금 차감",
+  RELEASE: "입찰 보증금 반환",
+  DEPOSIT_CANCEL: "충전 취소",
+  WITHDRAW: "출금",
+  FEE_INCOME: "수수료",
+  SETTLEMENT_PAYOUT: "정산 입금",
 };
 
 export function formatTransactionType(type: string): string {
-    return TRANSACTION_TYPE_LABELS[type] ?? type;
+  return TRANSACTION_TYPE_LABELS[type] ?? type;
 }
+
+// ===== 인출 =====
+// WithdrawController — 신청과 상태조회 둘 다 있지만, 신청 자체가 계좌조회→지갑차감→완료 처리까지
+// 한 번에 동기로 끝나므로(뱅킹 연동은 시뮬레이션) 신청 응답의 status는 실패가 아닌 한 항상 SUCCESS다.
+// 상태조회는 신청 시점 이후 내역을 다시 확인하고 싶을 때 쓴다
+export type WithdrawStatus = "PENDING" | "SUCCESS" | "FAILED";
+
+export interface WithdrawRequestResult {
+  withdrawRequestId: number;
+  status: WithdrawStatus;
+  feeAmount: number;
+  netAmount: number;
+}
+
+export interface WithdrawStatusResult {
+  withdrawRequestId: number;
+  status: WithdrawStatus;
+  amount: number;
+  failReason: string | null;
+  requestedAt: string;
+  processedAt: string | null;
+}
+
+// 인출 수수료율 — 백엔드 WITHDRAW_FEE_RATE(2%, 내림 처리)와 동일한 값. 안내 문구에만 쓴다,
+// 실제 금액 계산은 서버 응답(feeAmount/netAmount)을 그대로 표시한다
+export const WITHDRAW_FEE_RATE = 0.02;
+
+// POST /api/v1/wallet/withdraw/request
+export function requestWithdraw(
+  amount: number,
+): Promise<WithdrawRequestResult> {
+  return apiPost<WithdrawRequestResult>("/api/v1/wallet/withdraw/request", {
+    amount,
+  });
+}
+
+// GET /api/v1/wallet/withdraw/{id}
+export function getWithdrawStatus(
+  withdrawRequestId: number,
+): Promise<WithdrawStatusResult> {
+  return apiGet<WithdrawStatusResult>(
+    `/api/v1/wallet/withdraw/${withdrawRequestId}`,
+  );
+}
+
+// 등록된 출금 계좌가 없다는 응답 — 회원 서비스 쪽 계좌 등록을 먼저 안내해야 한다
+export const WITHDRAW_NO_BANK_ACCOUNT = "WDERR-3003";
+// 잔액 부족
+export const WITHDRAW_INSUFFICIENT_BALANCE = "WDERR-3002";
+// 동시 요청이 몰려 지갑 락 획득에 실패(재시도 5회 소진) — 잠시 후 다시 시도하면 된다
+export const WITHDRAW_LOCK_CONTENTION = "WDERR-3006";
