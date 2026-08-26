@@ -67,35 +67,38 @@ export function MyPage() {
         <div>
             <ProfileLine fallbackName={session.displayName} />
             <MySummary onSelect={selectTab} />
-            <nav
-                className="mb-5 mt-5 flex gap-7 overflow-x-auto border-b border-line"
-                aria-label="마이페이지 탭"
-            >
-                {TAB_GROUPS.map((group, index) => (
-                    <div key={group.label} className={index > 0 ? "border-l border-line pl-7" : ""}>
-                        <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-[0.1em] text-faint">
-                            {group.label}
-                        </p>
-                        <div className="flex">
-                            {group.tabs.map((t) => (
-                                <button
-                                    key={t.value}
-                                    type="button"
-                                    aria-current={tab === t.value ? "page" : undefined}
-                                    onClick={() => selectTab(t.value)}
-                                    className={`-mb-px whitespace-nowrap border-b-2 px-3 pb-3 pt-1 text-[13.5px] font-semibold transition-colors ${
-                                        tab === t.value
-                                            ? "border-brand text-ink"
-                                            : "border-transparent text-muted hover:text-ink"
-                                    }`}
-                                >
-                                    {t.label}
-                                </button>
-                            ))}
+            {/* 스크롤은 래퍼가 담당 — nav에 직접 걸면 탭 밑줄의 1px 겹침(-mb-px)이 세로 스크롤바를 만든다 */}
+            <div className="mb-5 mt-5 overflow-x-auto">
+                <nav
+                    className="flex w-max min-w-full gap-7 border-b border-line"
+                    aria-label="마이페이지 탭"
+                >
+                    {TAB_GROUPS.map((group, index) => (
+                        <div key={group.label} className={index > 0 ? "border-l border-line pl-7" : ""}>
+                            <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-[0.1em] text-faint">
+                                {group.label}
+                            </p>
+                            <div className="flex">
+                                {group.tabs.map((t) => (
+                                    <button
+                                        key={t.value}
+                                        type="button"
+                                        aria-current={tab === t.value ? "page" : undefined}
+                                        onClick={() => selectTab(t.value)}
+                                        className={`-mb-px whitespace-nowrap border-b-2 px-3 pb-3 pt-1 text-[13.5px] font-semibold transition-colors ${
+                                            tab === t.value
+                                                ? "border-brand text-ink"
+                                                : "border-transparent text-muted hover:text-ink"
+                                        }`}
+                                    >
+                                        {t.label}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                ))}
-            </nav>
+                    ))}
+                </nav>
+            </div>
             {tab === "orders" && <OrdersTab />}
             {tab === "settlements" && <SettlementsTab />}
             {tab === "wallet" && <WalletTab />}
