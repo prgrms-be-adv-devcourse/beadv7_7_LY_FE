@@ -33,13 +33,20 @@ function BidBox({ auction }: { auction: AuctionDetail }) {
     const currentPrice = auction.highestBidAmount ?? auction.startBidAmount;
     const nextBid = auction.nextMinBidAmount ?? auction.startBidAmount;
 
+    // 입력 전(null)에는 항상 최신 최소 입찰가를 따라간다 — 주기 갱신으로 최소가가 올라도
+    // 낡은 금액이 입력칸에 남지 않는다. 사용자가 한 번 고치면 그 값을 유지한다
+    const [amountInput, setAmountInput] = useState<string | null>(null);
+    const bidAmount = amountInput === null ? nextBid : Number(amountInput);
+
     const bidMutation = useMutation({
-        mutationFn: () => placeBid(auction.auctionId, nextBid),
-        onSuccess: () => {
+        mutationFn: (amount: number) => placeBid(auction.auctionId, amount),
+        onSuccess: (_, amount) => {
             setBidError(null);
+            // 입찰 후에는 새 최소 입찰가부터 다시 시작한다
+            setAmountInput(null);
             queryClient.invalidateQueries({ queryKey: ["auction", String(auction.auctionId)] });
             // 실패만 알리고 성공은 조용하던 비대칭을 메운다 — 핵심 액션엔 성공 확인이 필요
-            showToast(`${formatWon(nextBid)} 입찰 완료 — 현재 최고 입찰자입니다`);
+            showToast(`${formatWon(amount)} 입찰 완료 — 현재 최고 입찰자입니다`);
         },
         onError: (error) => {
             setBidError(error instanceof ApiError ? error.message : "입찰 처리 중 문제가 생겼습니다.");
@@ -48,6 +55,23 @@ function BidBox({ auction }: { auction: AuctionDetail }) {
             queryClient.invalidateQueries({ queryKey: ["auction", String(auction.auctionId)] });
         },
     });
+
+    function submitBid() {
+        if (bidMutation.isPending) return;
+        if (!Number.isFinite(bidAmount) || bidAmount <= 0) {
+            showToast("입찰 금액을 숫자로 입력해주세요.");
+            return;
+        }
+        if (bidAmount < nextBid) {
+            showToast(`최소 입찰 금액은 ${formatWon(nextBid)}입니다.`);
+            return;
+        }
+        if ((bidAmount - nextBid) % auction.bidUnit !== 0) {
+            showToast(`${formatWon(nextBid)}부터 ${formatWon(auction.bidUnit)} 단위로만 입찰할 수 있습니다.`);
+            return;
+        }
+        bidMutation.mutate(bidAmount);
+    }
 
     return (
         <aside className="rounded-2xl border-[1.5px] border-line-strong bg-surface p-5 shadow-sm">
@@ -66,14 +90,40 @@ function BidBox({ auction }: { auction: AuctionDetail }) {
             />
             <VuCountdown startedAt={parseServerTime(auction.startAt)} endsAt={parseServerTime(auction.endAt)} />
             {session ? (
-                <button
-                    type="button"
-                    onClick={() => bidMutation.mutate()}
-                    disabled={bidMutation.isPending}
-                    className="mt-4 w-full rounded-xl bg-live py-3.5 text-[15px] font-extrabold text-white transition-colors hover:bg-live/90 disabled:opacity-60"
-                >
-                    {bidMutation.isPending ? "입찰 중…" : `${formatWon(nextBid)} 입찰하기`}
-                </button>
+                <div className="mt-4">
+                    <label className="block">
+                        <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-faint">
+                            입찰 금액
+                        </span>
+                        <input
+                            type="number"
+                            inputMode="numeric"
+                            min={nextBid}
+                            step={auction.bidUnit}
+                            value={amountInput ?? String(nextBid)}
+                            onChange={(e) => setAmountInput(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") submitBid();
+                            }}
+                            className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-right font-mono text-[15px] font-bold tabular-nums outline-none focus:border-line-strong"
+                        />
+                    </label>
+                    <p className="mt-1 text-[11.5px] text-faint">
+                        최소 {formatWon(nextBid)} · {formatWon(auction.bidUnit)} 단위로 올릴 수 있습니다
+                    </p>
+                    <button
+                        type="button"
+                        onClick={submitBid}
+                        disabled={bidMutation.isPending}
+                        className="mt-2.5 w-full rounded-xl bg-live py-3.5 text-[15px] font-extrabold text-white transition-colors hover:bg-live/90 disabled:opacity-60"
+                    >
+                        {bidMutation.isPending
+                            ? "입찰 중…"
+                            : Number.isFinite(bidAmount)
+                              ? `${formatWon(bidAmount)} 입찰하기`
+                              : "입찰하기"}
+                    </button>
+                </div>
             ) : (
                 <button
                     type="button"
