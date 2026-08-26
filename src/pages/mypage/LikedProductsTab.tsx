@@ -1,6 +1,7 @@
 import { Link } from "react-router";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { fetchLikedProducts } from "../../api/wishlist";
+import { fetchRecommendations } from "../../api/recommendations";
 import { QueryState } from "../../components/QueryState";
 import { VinylCover } from "../../components/VinylCover";
 import { LikeButton } from "../../components/LikeButton";
@@ -64,6 +65,57 @@ export function LikedProductsTab() {
                         </button>
                     </div>
                 )}
+            </QueryState>
+
+            <RecommendationsSection />
+        </div>
+    );
+}
+
+function RecommendationsSection() {
+    // 찜한 상품을 근거로 계산되는 추천이라, 찜 목록이 비면 이 목록도 함께 비어 있는 게 정상 응답이다
+    const query = useQuery({
+        queryKey: ["wishlist", "recommendations"],
+        queryFn: () => fetchRecommendations(),
+    });
+
+    const items = query.data ?? [];
+
+    return (
+        <div className="mt-10 border-t border-line pt-8">
+            <h3 className="mb-1 text-base font-bold tracking-tight">회원님을 위한 추천</h3>
+            <p className="mb-4 text-[13.5px] text-muted">찜한 상품을 바탕으로 골라봤어요.</p>
+
+            <QueryState
+                isLoading={query.isPending}
+                error={query.error}
+                isEmpty={items.length === 0}
+                emptyMessage="추천을 위해 위시리스트에 상품을 담아보세요."
+                onRetry={() => query.refetch()}
+            >
+                <div className="grid grid-cols-2 gap-3.5 md:grid-cols-4">
+                    {items.map((item) => (
+                        <Link
+                            key={item.productId}
+                            to={`/products/${item.productId}`}
+                            className="rounded-xl border border-line bg-surface p-3 shadow-sm transition-[transform,border-color] duration-150 hover:-translate-y-0.5 hover:border-line-strong"
+                        >
+                            <div className="relative">
+                                <VinylCover
+                                    title={item.title}
+                                    artist={item.artistName}
+                                    imageUrl={item.coverImageUrl}
+                                />
+                                <LikeButton productId={item.productId} />
+                            </div>
+                            <div className="mt-2.5 truncate font-display text-sm font-bold">{item.title}</div>
+                            <div className="truncate text-xs text-muted">
+                                {item.artistName}
+                                {item.releaseYear ? ` · ${item.releaseYear}` : ""}
+                            </div>
+                        </Link>
+                    ))}
+                </div>
             </QueryState>
         </div>
     );
