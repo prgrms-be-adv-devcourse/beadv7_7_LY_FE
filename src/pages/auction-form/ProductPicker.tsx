@@ -25,9 +25,10 @@ export function ProductPicker({ picked, onPick }: ProductPickerProps) {
 
     const results = useQuery({
         // 키에 "picker"를 넣어 카탈로그 검색과 캐시를 분리한다 — 같은 키를 쓰면 요청 크기가
-        // 다른(8건 vs 20건) 두 화면이 서로의 응답을 재사용해 결과 수가 틀리게 보인다
+        // 다른(100건 vs 20건) 두 화면이 서로의 응답을 재사용해 결과 수가 틀리게 보인다
         queryKey: ["productSearch", "picker", submitted],
-        queryFn: ({ signal }) => searchProducts(submitted, 0, 8, signal),
+        // 페이지 이동 없이 한 번에 넉넉히 받아 스크롤로 보여준다 — 100건 안에 없으면 검색어를 좁히는 게 빠르다
+        queryFn: ({ signal }) => searchProducts(submitted, 0, 100, signal),
         enabled: submitted.length >= 2 && picked === null,
         retry: 0,
     });
@@ -108,10 +109,12 @@ export function ProductPicker({ picked, onPick }: ProductPickerProps) {
                 <p className="mt-2 text-[12px] font-semibold text-live">상품 검색에 실패했습니다.</p>
             )}
             {results.data && results.data.content.length === 0 && (
-                <p className="mt-2 text-[12px] text-muted">‘{submitted}’ 검색 결과가 없습니다.</p>
+                <p className="mt-2 text-[12px] text-muted">
+                    ‘{submitted}’ 검색 결과가 없습니다. 앨범 제목이나 아티스트 이름을 바꿔 다시 검색해보세요.
+                </p>
             )}
             {results.data && results.data.content.length > 0 && (
-                <ul className="mt-2 flex flex-col gap-1.5">
+                <ul className="mt-2 flex max-h-80 flex-col gap-1.5 overflow-y-auto pr-1">
                     {results.data.content.map((card) => (
                         <li key={card.productId}>
                             <button
