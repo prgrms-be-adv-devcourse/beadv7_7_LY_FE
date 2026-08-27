@@ -308,11 +308,13 @@ export function AuctionDetailPage() {
                             <section className="mt-7 overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
                                 <div className="flex items-center justify-between border-b border-line px-5 py-4">
                                     <h3 className="text-[15px] font-bold">호가 로그</h3>
-                                    <span className="text-xs text-muted">
-                                        최근 <span className="font-mono tabular-nums">{auction.recentBids?.length ?? 0}</span>건
-                                    </span>
+                                    {(auction.recentBids?.length ?? 0) > 0 && (
+                                        <span className="text-xs text-muted">
+                                            최근 <span className="font-mono tabular-nums">{auction.recentBids?.length}</span>건
+                                        </span>
+                                    )}
                                 </div>
-                                <BidLog entries={auction.recentBids ?? []} />
+                                <BidLog entries={auction.recentBids ?? []} status={auction.status} />
                             </section>
                         </div>
 
