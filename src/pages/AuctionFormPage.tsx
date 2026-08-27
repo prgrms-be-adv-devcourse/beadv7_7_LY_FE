@@ -29,6 +29,32 @@ import {
     type AuctionFormValues,
 } from "./auction-form/schedule";
 
+// 시작 시각을 10분 단위 select로 받는다 — 자유 입력과 달리 정책에 맞는 값만 고를 수 있다
+const START_TIME_OPTIONS: string[] = [];
+for (let minute = 0; minute < 24 * 60; minute += AUCTION_POLICY.TIME_UNIT_MINUTES) {
+    START_TIME_OPTIONS.push(
+        `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`,
+    );
+}
+
+// 마감은 절대 시각 대신 "얼마나 진행할지"로 고른다 — 최소 진행 시간 같은 규칙 위반이 구조적으로 안 나온다
+const DURATION_OPTIONS = [
+    { hours: 6, label: "6시간" },
+    { hours: 12, label: "12시간" },
+    { hours: 24, label: "1일" },
+    { hours: 72, label: "3일" },
+    { hours: 168, label: "7일" },
+];
+
+const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+
+function formatEndPreview(date: Date): string {
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${date.getMonth() + 1}/${date.getDate()} (${WEEKDAYS[date.getDay()]}) ${pad(date.getHours())}:${pad(
+        date.getMinutes(),
+    )}`;
+}
+
 function emptyValues(now: Date): AuctionFormValues {
     const start = earliestStartAt(now);
     return {
@@ -261,8 +287,30 @@ function AuctionForm({
     // 실제 판정은 보내기 직전 검증에서 다시 한다
     const minStartAt = useMemo(() => toInputValue(earliestStartAt(new Date())), []);
 
+    // 마감을 직접 입력하는 모드인지. 열었을 때 기간이 선택지에 없으면(임의 기간으로 등록된 수정 폼) 직접 입력으로 시작
+    const [customEnd, setCustomEnd] = useState<boolean>(() => {
+        if (!initialValues) return false;
+        const start = parseInputValue(initialValues.startAt);
+        const end = parseInputValue(initialValues.endAt);
+        if (start === null || end === null) return true;
+        return !DURATION_OPTIONS.some((option) => end.getTime() - start.getTime() === option.hours * 3600_000);
+    });
+
     function patch(next: Partial<AuctionFormValues>) {
         setValues((current) => ({ ...current, ...next }));
+    }
+
+    // 시작을 옮겨도 골라둔 진행 기간은 유지한다 — 마감 시각을 따로 다시 맞출 필요가 없다
+    function patchStartAt(nextStartAt: string) {
+        const nextStart = parseInputValue(nextStartAt);
+        const prevStart = parseInputValue(values.startAt);
+        const prevEnd = parseInputValue(values.endAt);
+        if (!customEnd && nextStart !== null && prevStart !== null && prevEnd !== null) {
+            const duration = prevEnd.getTime() - prevStart.getTime();
+            patch({ startAt: nextStartAt, endAt: toInputValue(new Date(nextStart.getTime() + duration)) });
+            return;
+        }
+        patch({ startAt: nextStartAt });
     }
 
     useEffect(() => {
@@ -345,6 +393,11 @@ function AuctionForm({
     }
 
     const startAtDate = parseInputValue(values.startAt);
+    const endAtDate = parseInputValue(values.endAt);
+    const durationMs =
+        startAtDate !== null && endAtDate !== null ? endAtDate.getTime() - startAtDate.getTime() : null;
+    const startDatePart = values.startAt.slice(0, 10);
+    const startTimePart = values.startAt.slice(11, 16);
     const description = values.itemDescription.trim();
 
     return (
@@ -469,44 +522,116 @@ function AuctionForm({
                     </p>
                 </Section>
 
-                <Section title="일정" hint="시작·마감과 자동 연장">
-                    <div className="grid gap-3 sm:grid-cols-2">
-                        <label className="block">
-                            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-faint">
-                                시작 시각
-                            </span>
+                <Section title="일정" hint="시작·진행 기간과 자동 연장">
+                    <div>
+                        <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-faint">
+                            시작 시각
+                        </span>
+                        <div className="flex flex-wrap items-center gap-2">
                             <input
-                                type="datetime-local"
-                                value={values.startAt}
-                                min={minStartAt}
-                                step={AUCTION_POLICY.TIME_UNIT_MINUTES * 60}
-                                onChange={(e) => patch({ startAt: e.target.value })}
-                                className="w-full rounded-lg border border-line bg-surface px-3 py-1.5 text-[13.5px] outline-none focus:border-line-strong"
+                                type="date"
+                                value={startDatePart}
+                                min={minStartAt.slice(0, 10)}
+                                onChange={(e) => patchStartAt(`${e.target.value}T${startTimePart}`)}
+                                aria-label="시작 날짜"
+                                className="rounded-lg border border-line bg-surface px-3 py-1.5 text-[13.5px] outline-none focus:border-line-strong"
                             />
-                            <span className="mt-1 block text-[11.5px] text-faint">
-                                지금으로부터 {AUCTION_POLICY.MIN_START_LEAD_MINUTES}분 뒤부터
-                            </span>
-                        </label>
-                        <label className="block">
-                            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-faint">
-                                마감 시각
-                            </span>
-                            <input
-                                type="datetime-local"
-                                value={values.endAt}
-                                min={
-                                    startAtDate === null
-                                        ? minStartAt
-                                        : toInputValue(addHours(startAtDate, AUCTION_POLICY.MIN_DURATION_HOURS))
-                                }
-                                step={AUCTION_POLICY.TIME_UNIT_MINUTES * 60}
-                                onChange={(e) => patch({ endAt: e.target.value })}
-                                className="w-full rounded-lg border border-line bg-surface px-3 py-1.5 text-[13.5px] outline-none focus:border-line-strong"
-                            />
-                            <span className="mt-1 block text-[11.5px] text-faint">
-                                시작보다 최소 {AUCTION_POLICY.MIN_DURATION_HOURS}시간 뒤
-                            </span>
-                        </label>
+                            <select
+                                value={startTimePart}
+                                onChange={(e) => patchStartAt(`${startDatePart}T${e.target.value}`)}
+                                aria-label="시작 시간"
+                                className="rounded-lg border border-line bg-surface px-2.5 py-1.5 font-mono text-[13.5px] outline-none focus:border-line-strong"
+                            >
+                                {/* 수정 폼 등에서 10분 단위가 아닌 값이 올 수 있다 — 목록에 없으면 그대로 보여준다 */}
+                                {!START_TIME_OPTIONS.includes(startTimePart) && (
+                                    <option value={startTimePart}>{startTimePart}</option>
+                                )}
+                                {START_TIME_OPTIONS.map((time) => (
+                                    <option key={time} value={time}>
+                                        {time}
+                                    </option>
+                                ))}
+                            </select>
+                            <button
+                                type="button"
+                                onClick={() => patchStartAt(toInputValue(earliestStartAt(new Date())))}
+                                className="rounded-lg border border-line bg-paper px-2.5 py-1.5 text-xs font-semibold text-muted hover:border-line-strong hover:text-ink"
+                            >
+                                가장 빠른 시각
+                            </button>
+                        </div>
+                        <span className="mt-1 block text-[11.5px] text-faint">
+                            지금으로부터 {AUCTION_POLICY.MIN_START_LEAD_MINUTES}분 뒤부터 ·{" "}
+                            {AUCTION_POLICY.TIME_UNIT_MINUTES}분 단위
+                        </span>
+                    </div>
+                    <div className="mt-4">
+                        <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-faint">
+                            진행 기간
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                            {DURATION_OPTIONS.map((option) => {
+                                const selected = !customEnd && durationMs === option.hours * 3600_000;
+                                return (
+                                    <button
+                                        key={option.hours}
+                                        type="button"
+                                        aria-pressed={selected}
+                                        onClick={() => {
+                                            setCustomEnd(false);
+                                            if (startAtDate !== null) {
+                                                patch({ endAt: toInputValue(addHours(startAtDate, option.hours)) });
+                                            }
+                                        }}
+                                        className={`rounded-lg border px-3 py-1.5 text-[13px] font-semibold transition-colors ${
+                                            selected
+                                                ? "border-brand bg-brand text-white"
+                                                : "border-line bg-surface text-muted hover:border-line-strong hover:text-ink"
+                                        }`}
+                                    >
+                                        {option.label}
+                                    </button>
+                                );
+                            })}
+                            <button
+                                type="button"
+                                aria-pressed={customEnd}
+                                onClick={() => setCustomEnd(true)}
+                                className={`rounded-lg border px-3 py-1.5 text-[13px] font-semibold transition-colors ${
+                                    customEnd
+                                        ? "border-brand bg-brand text-white"
+                                        : "border-line bg-surface text-muted hover:border-line-strong hover:text-ink"
+                                }`}
+                            >
+                                직접 입력
+                            </button>
+                        </div>
+                        {customEnd ? (
+                            <div className="mt-2 max-w-[260px]">
+                                <input
+                                    type="datetime-local"
+                                    value={values.endAt}
+                                    min={
+                                        startAtDate === null
+                                            ? minStartAt
+                                            : toInputValue(addHours(startAtDate, AUCTION_POLICY.MIN_DURATION_HOURS))
+                                    }
+                                    step={AUCTION_POLICY.TIME_UNIT_MINUTES * 60}
+                                    onChange={(e) => patch({ endAt: e.target.value })}
+                                    aria-label="마감 시각"
+                                    className="w-full rounded-lg border border-line bg-surface px-3 py-1.5 text-[13.5px] outline-none focus:border-line-strong"
+                                />
+                                <span className="mt-1 block text-[11.5px] text-faint">
+                                    시작보다 최소 {AUCTION_POLICY.MIN_DURATION_HOURS}시간 뒤
+                                </span>
+                            </div>
+                        ) : (
+                            endAtDate !== null && (
+                                <p className="mt-2 text-[12.5px] text-muted">
+                                    마감 <b className="font-semibold text-ink">{formatEndPreview(endAtDate)}</b>
+                                </p>
+                            )
+                        )}
                     </div>
                     <label className="mt-3 flex items-center gap-2 text-[13.5px] font-semibold">
                         <input
