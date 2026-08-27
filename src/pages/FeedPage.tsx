@@ -13,7 +13,8 @@ export function FeedPage() {
     const [searchParams, setSearchParams] = useSearchParams();
     const genre = searchParams.get("genre") ?? "";
     const pressType = searchParams.get("pressType") ?? "";
-    const status = searchParams.get("status") ?? "";
+    // 피드는 진행 중이 기본. "시작 전" 외의 값(종료 상태를 담은 옛 링크 등)은 전부 기본으로 되돌린다
+    const status = searchParams.get("status") === "SCHEDULED" ? "SCHEDULED" : "RUNNING";
     const sortParam = searchParams.get("sort");
     const sort = VALID_SORTS.includes(sortParam as AuctionSort) ? (sortParam as AuctionSort) : "ending_soon";
     const page = Math.max(0, Number(searchParams.get("page") ?? "0") || 0);
@@ -35,7 +36,7 @@ export function FeedPage() {
             fetchAuctions({
                 genre: genre || undefined,
                 pressType: pressType || undefined,
-                status: status || undefined,
+                status,
                 sort,
                 page,
                 size: PAGE_SIZE,

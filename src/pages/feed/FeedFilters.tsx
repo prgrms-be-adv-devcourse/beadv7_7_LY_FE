@@ -30,12 +30,11 @@ const PRESS_TYPES = [
     { value: "REISSUE", label: "재발매" },
 ];
 
+// 종료된 경매(낙찰·유찰)는 피드에 내놓지 않는다 — 시간이 지날수록 죽은 매물이 목록을 지배하게 되고,
+// 낙찰가 확인은 상품 상세의 시세가, 내 경매 결과는 마이페이지가 담당한다
 const STATUSES = [
-    { value: "", label: "전체 상태" },
     { value: "RUNNING", label: "진행 중" },
     { value: "SCHEDULED", label: "시작 전" },
-    { value: "ENDED_WON", label: "낙찰" },
-    { value: "ENDED_FAILED", label: "유찰" },
 ];
 
 const SORTS = [
@@ -79,18 +78,26 @@ export function FeedFilters({ values, onChange }: FeedFiltersProps) {
                 </button>
             ))}
             <span className="h-5 w-px bg-line" />
-            <select
-                value={values.status}
-                onChange={(e) => onChange({ status: e.target.value || null })}
-                aria-label="상태 필터"
-                className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[13px] font-semibold outline-none"
-            >
-                {STATUSES.map((s) => (
-                    <option key={s.value} value={s.value}>
-                        {s.label}
-                    </option>
-                ))}
-            </select>
+            <div role="radiogroup" aria-label="상태 필터" className="inline-flex rounded-lg border border-line bg-surface p-0.5">
+                {STATUSES.map((s) => {
+                    const selected = values.status === s.value;
+                    return (
+                        <button
+                            key={s.value}
+                            type="button"
+                            role="radio"
+                            aria-checked={selected}
+                            // 진행 중은 기본값이라 URL에서 status를 지운다 — 필터 없는 기존 공유 링크와 같은 형태 유지
+                            onClick={() => onChange({ status: s.value === "RUNNING" ? null : s.value })}
+                            className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
+                                selected ? "bg-brand text-white" : "text-muted hover:text-ink"
+                            }`}
+                        >
+                            {s.label}
+                        </button>
+                    );
+                })}
+            </div>
             <select
                 value={values.sort}
                 onChange={(e) => onChange({ sort: e.target.value })}
