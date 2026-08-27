@@ -84,6 +84,8 @@ export function WithdrawForm() {
       </p>
       <form
         onSubmit={submit}
+        // 브라우저 min/step 검증이 우리가 만든 에러 문구·확인창을 가로채지 않게 끈다
+        noValidate
         className="mt-2 flex flex-wrap items-center gap-2"
       >
         <input

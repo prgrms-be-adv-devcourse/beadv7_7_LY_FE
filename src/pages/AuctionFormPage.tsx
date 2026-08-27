@@ -211,6 +211,10 @@ function AuctionForm({
     const [images, setImages] = useState<PickedImage[]>(
         () => originalImages.map((url) => ({ kind: "remote", url })));
     const [errors, setErrors] = useState<string[]>([]);
+    // 첫 제출 이후에는 입력을 고칠 때마다 다시 검증한다 — 에러 목록이 실시간으로 줄어들어
+    // "제대로 고쳤나"를 다시 제출해보지 않아도 알 수 있다
+    const [attempted, setAttempted] = useState(false);
+    const errorBoxRef = useRef<HTMLDivElement | null>(null);
     const [serverError, setServerError] = useState<string | null>(null);
     // 사진을 줄이는 중이면 아직 목록에 안 들어온 사진이 있다 — 그 상태로 저장하면 사진 없이 등록된다
     const [pickerBusy, setPickerBusy] = useState(false);
@@ -262,6 +266,11 @@ function AuctionForm({
     }
 
     useEffect(() => {
+        if (!attempted) return;
+        setErrors(validateAuctionForm(values, new Date()));
+    }, [attempted, values]);
+
+    useEffect(() => {
         patch({ productId: product?.productId ?? null });
     }, [product]);
 
@@ -310,9 +319,14 @@ function AuctionForm({
             setServerError("사진을 준비하는 중입니다. 잠시 후 다시 눌러주세요.");
             return;
         }
+        setAttempted(true);
         const found = validateAuctionForm(values, new Date());
         setErrors(found);
-        if (found.length > 0) return;
+        if (found.length > 0) {
+            // 에러 목록이 긴 폼 맨 아래에 있어서, 렌더된 다음 프레임에 그리로 데려간다
+            requestAnimationFrame(() => errorBoxRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }));
+            return;
+        }
 
         const description = values.itemDescription.trim();
 
@@ -361,7 +375,11 @@ function AuctionForm({
                 </div>
             )}
 
-            <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-6">
+            {/* noValidate: 브라우저의 min/step 검증 말풍선이 우리가 만든 한글 에러 안내를 가로채지 않게 끈다.
+                실제 검증은 제출 시 validateAuctionForm이 전부 담당한다 */}
+            <form onSubmit={handleSubmit} noValidate className="mt-6">
+                {/* 수정 시한이 지났으면 입력 자체를 잠근다 — 다 고쳐놓고 맨 아래에서 비활성 버튼을 만나는 헛수고 방지 */}
+                <fieldset disabled={locked} className="flex flex-col gap-6">
                 <Section title="음반" hint="경매로 올릴 마스터 상품">
                     <ProductPicker picked={product} onPick={setProduct} />
                 </Section>
@@ -435,7 +453,7 @@ function AuctionForm({
                             onChange={(v) => patch({ shippingFee: v })}
                             min={0}
                             step={100}
-                            hint="무료면 0"
+                            hint="무료배송이면 0을 입력"
                         />
                         <NumberField
                             label="입찰 단위"
@@ -513,7 +531,7 @@ function AuctionForm({
                 </Section>
 
                 {errors.length > 0 && (
-                    <div className="rounded-xl border border-live/30 bg-live-bg px-5 py-4">
+                    <div ref={errorBoxRef} className="rounded-xl border border-live/30 bg-live-bg px-5 py-4">
                         <p className="font-semibold text-live">아래를 고쳐야 등록할 수 있습니다.</p>
                         <ul className="mt-2 list-disc pl-5 text-[13px] text-ink">
                             {errors.map((message) => (
@@ -552,6 +570,7 @@ function AuctionForm({
                         </button>
                     )}
                 </div>
+                </fieldset>
             </form>
         </div>
     );
@@ -580,6 +599,7 @@ function NumberField({ label, value, onChange, min, step, hint }: NumberFieldPro
     return (
         <label className="block">
             <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-faint">{label}</span>
+            {/* placeholder를 두지 않는다 — 회색 숫자가 미리 보이면 입력된 값으로 오해해서 빈칸인 채 제출한다 */}
             <input
                 type="number"
                 inputMode="numeric"
@@ -587,7 +607,6 @@ function NumberField({ label, value, onChange, min, step, hint }: NumberFieldPro
                 step={step}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
-                placeholder={String(min)}
                 className="w-full rounded-lg border border-line bg-surface px-3 py-1.5 font-mono text-[13.5px] outline-none focus:border-line-strong"
             />
             <span className="mt-1 block text-[11.5px] text-faint">{hint}</span>
