@@ -45,8 +45,17 @@ export function MySummary({ onSelect }: MySummaryProps) {
             <SummaryCell
                 label="결제 대기"
                 value={pendingCount === undefined ? "—" : `${pendingCount}건`}
-                sub={hasPending ? "배송지 입력·결제가 필요합니다 →" : "처리할 주문이 없습니다"}
-                alert={hasPending}
+                // 아직 모르는 상태(로딩·실패)를 "없다"로 단정하지 않는다 — 결제 대기를 놓치면 낙찰이 날아간다
+                sub={
+                    pendingOrders.isError
+                        ? "확인하지 못했습니다 — 주문 탭에서 확인해주세요"
+                        : pendingCount === undefined
+                          ? "불러오는 중…"
+                          : hasPending
+                            ? "배송지 입력·결제가 필요합니다 →"
+                            : "처리할 주문이 없습니다"
+                }
+                alert={hasPending || pendingOrders.isError}
                 onClick={() => onSelect("orders")}
             />
             <SummaryCell
