@@ -81,7 +81,7 @@ export function PaymentSuccessPage() {
         const message =
             confirm.error instanceof ApiError ? confirm.error.message : "충전 승인 중 문제가 생겼습니다.";
         return (
-            <ResultCard tone="error" title="충전이 아직 반영되지 않았습니다">
+            <ResultCard tone="error" title="결제 승인이 아직 확인되지 않았습니다">
                 <p>{message}</p>
                 <p className="mt-1 font-mono text-[11px] text-faint">주문번호 {orderId}</p>
                 <p className="mt-2">

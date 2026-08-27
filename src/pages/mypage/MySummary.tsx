@@ -71,7 +71,7 @@ export function MySummary({ onSelect }: MySummaryProps) {
                 onClick={() => onSelect("hosted")}
             />
             <SummaryCell
-                label="예치금 잔액"
+                label="사용 가능 잔액"
                 value={balance.data === undefined ? "—" : formatWon(balance.data.availableBalance)}
                 sub="지갑 →"
                 onClick={() => onSelect("wallet")}

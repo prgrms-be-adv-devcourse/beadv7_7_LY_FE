@@ -69,7 +69,7 @@ export function WatchedAuctionsTab() {
 function WatchedRow({ item, detail }: { item: WatchedAuction; detail: AuctionDetail | undefined }) {
     // 상세 조회가 아직이거나 실패하면 목록이 준 정보만으로 그린다
     const title = detail?.product.title ?? `경매 #${item.auctionId}`;
-    const artist = detail?.product.artistName ?? "앨범 정보를 불러오지 못했습니다";
+    const artist = detail?.product.artistName ?? "음반 정보를 불러오지 못했습니다";
     const running = item.status === "RUNNING";
 
     return (

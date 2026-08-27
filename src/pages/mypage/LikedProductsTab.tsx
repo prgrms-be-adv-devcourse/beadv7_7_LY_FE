@@ -21,7 +21,7 @@ export function LikedProductsTab() {
         <div>
             <h3 className="mb-1 text-base font-bold tracking-tight">찜한 상품</h3>
             <p className="mb-4 text-[13.5px] text-muted">
-                카탈로그에서 하트를 누른 릴리스입니다. 하트를 다시 누르면 목록에서 빠집니다.
+                카탈로그에서 하트를 누른 음반입니다. 하트를 다시 누르면 목록에서 빠집니다.
             </p>
 
             <QueryState
@@ -90,7 +90,7 @@ function RecommendationsSection() {
                 isLoading={query.isPending}
                 error={query.error}
                 isEmpty={items.length === 0}
-                emptyMessage="추천을 위해 위시리스트에 상품을 담아보세요."
+                emptyMessage="카탈로그에서 음반을 찜하면 여기서 추천을 볼 수 있어요."
                 onRetry={() => query.refetch()}
             >
                 <div className="grid grid-cols-2 gap-3.5 md:grid-cols-4">

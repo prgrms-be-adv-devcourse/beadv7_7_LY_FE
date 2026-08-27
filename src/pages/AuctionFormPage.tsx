@@ -433,7 +433,7 @@ function AuctionForm({
             <form onSubmit={handleSubmit} noValidate className="mt-6">
                 {/* 수정 시한이 지났으면 입력 자체를 잠근다 — 다 고쳐놓고 맨 아래에서 비활성 버튼을 만나는 헛수고 방지 */}
                 <fieldset disabled={locked} className="flex flex-col gap-6">
-                <Section title="음반" hint="경매로 올릴 마스터 상품">
+                <Section title="음반" hint="경매로 올릴 음반 선택">
                     <ProductPicker picked={product} onPick={setProduct} />
                 </Section>
 

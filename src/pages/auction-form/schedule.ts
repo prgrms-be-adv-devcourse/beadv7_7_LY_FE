@@ -56,7 +56,7 @@ export function validateAuctionForm(values: AuctionFormValues, now: Date): strin
     const errors: string[] = [];
 
     if (values.productId === null) {
-        errors.push("어떤 음반의 경매인지 마스터 상품을 골라주세요.");
+        errors.push("경매로 올릴 음반을 골라주세요.");
     }
     if (!values.itemCondition) {
         errors.push("음반 상태를 골라주세요.");

@@ -103,11 +103,11 @@ function BrowseList({ page, onPage }: { page: number; onPage: (page: number) => 
             isLoading={query.isPending}
             error={query.error}
             isEmpty={!query.data || query.data.content.length === 0}
-            emptyMessage="등록된 릴리스가 아직 없습니다."
+            emptyMessage="등록된 음반이 아직 없습니다."
             loadingFallback={<SkeletonGrid />}
         >
             <p className="mb-3 text-[13px] text-muted">
-                등록된 릴리스 <b className="font-mono tabular-nums">{query.data?.totalElements}</b>건
+                등록된 음반 <b className="font-mono tabular-nums">{query.data?.totalElements}</b>건
             </p>
             <div className={`grid grid-cols-2 gap-3.5 md:grid-cols-4 ${query.isFetching ? "opacity-60" : ""}`}>
                 {query.data?.content.map((card) => (
@@ -191,9 +191,9 @@ export function CatalogPage() {
     return (
         <div>
             <p className="text-[11px] font-bold uppercase tracking-widest text-brand">카탈로그</p>
-            <h2 className="text-lg font-bold tracking-tight">릴리스 검색</h2>
+            <h2 className="text-lg font-bold tracking-tight">음반 검색</h2>
             <p className="mb-4 mt-1 text-[13.5px] text-muted">
-                앨범(릴리스) 단위로 탐색합니다 — 검색어가 없으면 등록된 릴리스를 둘러봅니다.
+                음반(앨범) 단위로 탐색합니다 — 검색어가 없으면 등록된 음반을 둘러봅니다.
             </p>
             <form onSubmit={submitSearch} className="mb-5 max-w-[520px]">
                 <div className="mb-2">

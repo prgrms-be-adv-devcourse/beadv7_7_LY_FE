@@ -100,7 +100,7 @@ export function ProductPicker({ picked, onPick }: ProductPickerProps) {
                             ? "음반 뒷면의 카탈로그 번호 (2글자 이상)"
                             : "앨범 제목·아티스트 (2글자 이상)"
                     }
-                    aria-label="마스터 상품 검색"
+                    aria-label="음반 검색"
                     className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-[14px] outline-none focus:border-line-strong"
                 />
                 <button
