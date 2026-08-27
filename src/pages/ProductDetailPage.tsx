@@ -54,10 +54,12 @@ export function ProductDetailPage() {
     const conditionSummaries = summaryQuery.data?.conditions ?? [];
 
     const trades = tradesQuery.data?.trades ?? [];
-    const graded = trades
-        .filter((t) => GRADED_CONDITIONS.includes(t.condition))
+    // 헤더의 최근 낙찰가도 차트와 같은 컨디션 필터를 따른다 — 따로 놀면 VG+ 차트 옆에
+    // M·NM 금액이 떠서 그 컨디션의 시세로 읽힌다
+    const filteredTrades = trades
+        .filter((t) => chartFilter.conditions === null || chartFilter.conditions.includes(t.condition))
         .sort((a, b) => a.tradedAt.localeCompare(b.tradedAt));
-    const lastTraded = graded.length > 0 ? graded[graded.length - 1].price : null;
+    const lastTraded = filteredTrades.length > 0 ? filteredTrades[filteredTrades.length - 1].price : null;
 
     return (
         <QueryState
@@ -132,7 +134,10 @@ export function ProductDetailPage() {
                         <div className="flex items-center justify-between border-b border-line px-5 py-4">
                             <h3 className="flex items-center gap-2 text-[15px] font-bold">최근 낙찰 시세</h3>
                             {lastTraded !== null && (
-                                <span className="font-mono text-lg font-bold tabular-nums text-up">{formatWon(lastTraded)}</span>
+                                <span className="flex items-baseline gap-2">
+                                    <span className="text-[11px] font-semibold text-faint">{chartFilter.label} 최근 낙찰</span>
+                                    <span className="font-mono text-lg font-bold tabular-nums text-up">{formatWon(lastTraded)}</span>
+                                </span>
                             )}
                         </div>
                         <div className="p-5">
