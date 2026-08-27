@@ -1,3 +1,5 @@
+import { GENRES } from "../../api/products";
+
 export interface FeedFilterValues {
     genre: string;
     pressType: string;
@@ -9,21 +11,6 @@ interface FeedFiltersProps {
     values: FeedFilterValues;
     onChange: (patch: Partial<Record<"genre" | "pressType" | "status" | "sort", string | null>>) => void;
 }
-
-// 백엔드가 product.genre와 정확 일치로 비교하므로 DB에 실재하는 값(Discogs 장르 표기)만 넣는다.
-// 목록은 시드 데이터의 상위 장르 순 — 여기 없는 값을 넣으면 그 필터는 항상 0건이 된다
-const GENRES = [
-    "Rock",
-    "Jazz",
-    "Classical",
-    "Electronic",
-    "Folk, World, & Country",
-    "Pop",
-    "Funk / Soul",
-    "Hip Hop",
-    "Reggae",
-    "Blues",
-];
 
 const PRESS_TYPES = [
     { value: "ORIGINAL", label: "오리지널" },
@@ -55,8 +42,8 @@ export function FeedFilters({ values, onChange }: FeedFiltersProps) {
             >
                 <option value="">전체 장르</option>
                 {GENRES.map((g) => (
-                    <option key={g} value={g}>
-                        {g}
+                    <option key={g.value} value={g.value}>
+                        {g.label}
                     </option>
                 ))}
             </select>

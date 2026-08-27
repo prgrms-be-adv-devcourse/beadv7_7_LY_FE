@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { fetchAuctions, parseServerTime, type AuctionListItem } from "../api/auctions";
+import { GENRES } from "../api/products";
 import { AuctionCard, formatWon } from "../components/AuctionCard";
 import { Countdown } from "../components/Countdown";
 import { QueryState } from "../components/QueryState";
@@ -66,6 +67,24 @@ export function HomePage() {
                     진행 중입니다
                 </p>
             )}
+
+            {/* 홈에서 바로 좁혀 들어갈 길을 준다 — 헤더 검색은 찾을 걸 이미 아는 사람만 쓴다 */}
+            <section className="mt-8">
+                <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-faint">장르로 둘러보기</p>
+                {/* 칸을 균등하게 나눠 히어로와 좌우 폭을 맞춘다 — 글자 길이에 따라 타일 크기가
+                    들쭉날쭉하면 오른쪽 끝이 비어 정돈되지 않아 보인다 */}
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-10">
+                    {GENRES.map((genre) => (
+                        <Link
+                            key={genre.value}
+                            to={`/feed?genre=${encodeURIComponent(genre.value)}`}
+                            className="flex items-center justify-center whitespace-nowrap rounded-xl border border-line bg-surface px-2 py-3 text-center text-[13px] font-semibold text-muted shadow-sm transition-[transform,border-color,color] duration-150 hover:-translate-y-0.5 hover:border-brand hover:text-brand"
+                        >
+                            {genre.label}
+                        </Link>
+                    ))}
+                </div>
+            </section>
 
             <section className="mt-9">
                 <div className="mb-3.5 flex items-baseline justify-between">

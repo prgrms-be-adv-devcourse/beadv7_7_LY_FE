@@ -69,6 +69,22 @@ export function getPriceSummary(productId: string | number): Promise<PriceSummar
 // 검색 대상 — 서버는 검색어가 번호인지 추측하지 않으므로 사용자가 고른 값을 그대로 보낸다
 export type ProductSearchBy = "name" | "catalog";
 
+// 서버가 product.genre와 정확히 일치로 비교하므로 value는 데이터에 실재하는 표기(Discogs 장르)를
+// 그대로 쓴다 — 여기 없는 값을 넣으면 그 장르는 항상 0건이 된다.
+// 목록은 시드 데이터의 상위 장르 순. 홈 타일과 피드 필터가 같은 목록을 봐야 서로 어긋나지 않는다
+export const GENRES = [
+    { value: "Rock", label: "록" },
+    { value: "Jazz", label: "재즈" },
+    { value: "Classical", label: "클래식" },
+    { value: "Electronic", label: "일렉트로닉" },
+    { value: "Folk, World, & Country", label: "포크·월드" },
+    { value: "Pop", label: "팝" },
+    { value: "Funk / Soul", label: "펑크·소울" },
+    { value: "Hip Hop", label: "힙합" },
+    { value: "Reggae", label: "레게" },
+    { value: "Blues", label: "블루스" },
+] as const;
+
 export function searchProducts(
     q: string,
     page: number,
