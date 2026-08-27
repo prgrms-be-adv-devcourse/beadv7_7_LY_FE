@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { searchProducts } from "../../api/products";
+import { searchProducts, type ProductSearchBy } from "../../api/products";
+import { SearchByToggle } from "../../components/SearchByToggle";
 import { VinylCover } from "../../components/VinylCover";
 
 export interface PickedProduct {
@@ -19,16 +20,19 @@ interface ProductPickerProps {
 // 새 음반을 만드는 화면이 아니라 기존 음반을 찾아 고르는 화면이다
 export function ProductPicker({ picked, onPick }: ProductPickerProps) {
     const [keyword, setKeyword] = useState("");
+    const [searchBy, setSearchBy] = useState<ProductSearchBy>("name");
     // 검색은 엔터/버튼에서만 실행한다 — 검색 쿼리가 서버에서 수 초짜리라 타이핑마다 쏘면 겹쳐서 느려진다
+    // 검색 대상도 실행 시점 값을 따로 들고 있는다 — 토글만 바꿔도 검색이 다시 나가면 안 되기 때문
     const [submitted, setSubmitted] = useState("");
+    const [submittedBy, setSubmittedBy] = useState<ProductSearchBy>("name");
     const [tooShort, setTooShort] = useState(false);
 
     const results = useQuery({
         // 키에 "picker"를 넣어 카탈로그 검색과 캐시를 분리한다 — 같은 키를 쓰면 요청 크기가
         // 다른(100건 vs 20건) 두 화면이 서로의 응답을 재사용해 결과 수가 틀리게 보인다
-        queryKey: ["productSearch", "picker", submitted],
+        queryKey: ["productSearch", "picker", submittedBy, submitted],
         // 페이지 이동 없이 한 번에 넉넉히 받아 스크롤로 보여준다 — 100건 안에 없으면 검색어를 좁히는 게 빠르다
-        queryFn: ({ signal }) => searchProducts(submitted, 0, 100, signal),
+        queryFn: ({ signal }) => searchProducts(submitted, 0, 100, signal, submittedBy),
         enabled: submitted.length >= 2 && picked === null,
         retry: 0,
     });
@@ -41,6 +45,7 @@ export function ProductPicker({ picked, onPick }: ProductPickerProps) {
         }
         setTooShort(false);
         setSubmitted(next);
+        setSubmittedBy(searchBy);
     }
 
     if (picked) {
@@ -70,6 +75,9 @@ export function ProductPicker({ picked, onPick }: ProductPickerProps) {
 
     return (
         <div>
+            <div className="mb-2">
+                <SearchByToggle value={searchBy} onChange={setSearchBy} />
+            </div>
             <div className="flex gap-2">
                 <input
                     value={keyword}
@@ -81,7 +89,11 @@ export function ProductPicker({ picked, onPick }: ProductPickerProps) {
                             runSearch();
                         }
                     }}
-                    placeholder="앨범 제목·아티스트·카탈로그 번호 (2글자 이상)"
+                    placeholder={
+                        searchBy === "catalog"
+                            ? "음반 뒷면의 카탈로그 번호 (2글자 이상)"
+                            : "앨범 제목·아티스트 (2글자 이상)"
+                    }
                     aria-label="마스터 상품 검색"
                     className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-[14px] outline-none focus:border-line-strong"
                 />
@@ -110,7 +122,9 @@ export function ProductPicker({ picked, onPick }: ProductPickerProps) {
             )}
             {results.data && results.data.content.length === 0 && (
                 <p className="mt-2 text-[12px] text-muted">
-                    ‘{submitted}’ 검색 결과가 없습니다. 앨범 제목이나 아티스트 이름을 바꿔 다시 검색해보세요.
+                    {submittedBy === "catalog"
+                        ? `‘${submitted}’로 시작하는 카탈로그 번호가 없습니다. 번호를 확인해 다시 검색해보세요.`
+                        : `‘${submitted}’ 검색 결과가 없습니다. 앨범 제목이나 아티스트 이름을 바꿔 다시 검색해보세요.`}
                 </p>
             )}
             {results.data && results.data.content.length > 0 && (

@@ -66,13 +66,21 @@ export function getPriceSummary(productId: string | number): Promise<PriceSummar
     return apiGet<PriceSummaryResponse>(`/api/v1/products/${productId}/price-summary`);
 }
 
+// 검색 대상 — 서버는 검색어가 번호인지 추측하지 않으므로 사용자가 고른 값을 그대로 보낸다
+export type ProductSearchBy = "name" | "catalog";
+
 export function searchProducts(
     q: string,
     page: number,
     size = 20,
     signal?: AbortSignal,
+    searchBy: ProductSearchBy = "name",
 ): Promise<ProductSearchResponse> {
     const params = new URLSearchParams({ q, page: String(page), size: String(size) });
+    // 이름 검색은 searchBy를 생략한다 — 서버 기본값이 이름 검색이라 요청 형태가 기존과 같아진다
+    if (searchBy === "catalog") {
+        params.set("searchBy", "catalog");
+    }
     // signal: 새 검색이 시작되면 이전 요청을 취소한다 — 연결이 끊기면 서버(MySQL) 쿼리도 중단된다
     return apiGet<ProductSearchResponse>(`/api/v1/search/products?${params}`, signal);
 }

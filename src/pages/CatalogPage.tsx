@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { fetchProductList, searchProducts } from "../api/products";
+import { fetchProductList, searchProducts, type ProductSearchBy } from "../api/products";
+import { SearchByToggle } from "../components/SearchByToggle";
 import { VinylCover } from "../components/VinylCover";
 import { QueryState } from "../components/QueryState";
 import { Pagination } from "../components/Pagination";
@@ -129,18 +130,22 @@ function BrowseList({ page, onPage }: { page: number; onPage: (page: number) => 
 export function CatalogPage() {
     const [searchParams, setSearchParams] = useSearchParams();
     const urlQuery = searchParams.get("q") ?? "";
+    // "catalog" 외의 값(오타·임의 조작)은 이름 검색으로 본다 — 서버는 모르는 값을 400으로 거절하기 때문
+    const urlSearchBy: ProductSearchBy = searchParams.get("searchBy") === "catalog" ? "catalog" : "name";
     const page = Math.max(0, Number(searchParams.get("page") ?? "0") || 0);
     // URL로 1글자 검색어가 들어올 수 있다(홈 검색창엔 길이 제한이 없다). 그때 쿼리는 enabled=false로
     // 영원히 pending이므로, 화면 분기도 같은 기준을 써야 스켈레톤이 무한히 돌지 않는다
     const isSearchActive = urlQuery.trim().length >= 2;
 
     const [input, setInput] = useState(urlQuery);
+    const [searchBy, setSearchBy] = useState<ProductSearchBy>(urlSearchBy);
     const [tooShort, setTooShort] = useState(false);
 
     // URL → 입력창: 뒤로가기 등 바깥에서 URL이 바뀌면 입력창을 URL에 맞춘다
     useEffect(() => {
         setInput(urlQuery);
-    }, [urlQuery]);
+        setSearchBy(urlSearchBy);
+    }, [urlQuery, urlSearchBy]);
 
     // 검색은 엔터/버튼에서만 실행한다 — 검색 쿼리 1회가 서버에서 수 초짜리라,
     // 타이핑 중간값(디바운스)마다 쏘면 요청이 서버에서 겹쳐 돌며 전체가 느려진다
@@ -153,14 +158,18 @@ export function CatalogPage() {
             return;
         }
         setTooShort(false);
-        setSearchParams(next ? { q: next, page: "0" } : {}, { replace: true });
+        // 이름 검색은 searchBy를 URL에 남기지 않는다 — 기존 공유 링크(q만 있는)와 같은 형태 유지
+        setSearchParams(
+            next ? { q: next, page: "0", ...(searchBy === "catalog" ? { searchBy } : {}) } : {},
+            { replace: true },
+        );
     }
 
     const query = useQuery({
-        queryKey: ["productSearch", "catalog", urlQuery, page],
+        queryKey: ["productSearch", "catalog", urlSearchBy, urlQuery, page],
         // React Query가 주는 AbortSignal을 fetch까지 관통시킨다 —
         // 새 검색을 하면 이전 검색 요청이 취소되고, 연결이 끊기면 서버 쿼리도 중단된다
-        queryFn: ({ signal }) => searchProducts(urlQuery, page, PAGE_SIZE, signal),
+        queryFn: ({ signal }) => searchProducts(urlQuery, page, PAGE_SIZE, signal, urlSearchBy),
         enabled: isSearchActive,
         placeholderData: keepPreviousData,
         // 실패한 검색을 재시도하면 힘든 서버를 더 힘들게 만든다
@@ -175,12 +184,19 @@ export function CatalogPage() {
                 앨범(릴리스) 단위로 탐색합니다 — 검색어가 없으면 등록된 릴리스를 둘러봅니다.
             </p>
             <form onSubmit={submitSearch} className="mb-5 max-w-[520px]">
+                <div className="mb-2">
+                    <SearchByToggle value={searchBy} onChange={setSearchBy} />
+                </div>
                 <div className="flex overflow-hidden rounded-xl border-[1.5px] border-line-strong bg-surface focus-within:border-brand">
                     <span aria-hidden="true" className="flex items-center pl-4 text-faint">⌕</span>
                     <input
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder="제목·아티스트·카탈로그 번호 (2글자 이상)"
+                        placeholder={
+                            searchBy === "catalog"
+                                ? "음반 뒷면의 카탈로그 번호 (2글자 이상)"
+                                : "앨범 제목·아티스트 (2글자 이상)"
+                        }
                         aria-label="카탈로그 검색"
                         className="flex-1 bg-transparent px-3 py-3 text-[15px] outline-none placeholder:text-faint"
                     />
@@ -204,7 +220,13 @@ export function CatalogPage() {
                     isLoading={query.isPending}
                     error={query.error}
                     isEmpty={!query.data || query.data.content.length === 0}
-                    emptyMessage={<>‘{urlQuery}’ 검색 결과가 없습니다. 다른 검색어를 시도해보세요.</>}
+                    emptyMessage={
+                        urlSearchBy === "catalog" ? (
+                            <>‘{urlQuery}’로 시작하는 카탈로그 번호가 없습니다. 번호를 확인해 다시 검색해보세요.</>
+                        ) : (
+                            <>‘{urlQuery}’ 검색 결과가 없습니다. 다른 검색어를 시도해보세요.</>
+                        )
+                    }
                     loadingFallback={<SkeletonGrid />}
                 >
                     <p className="mb-3 text-[13px] text-muted">
