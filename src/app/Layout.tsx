@@ -125,85 +125,33 @@ export function Layout() {
     );
 }
 
-const FOOTER_BROWSE = [
-    { to: "/feed", label: "경매 피드" },
-    { to: "/catalog", label: "음반 카탈로그" },
-    { to: "/auctions/new", label: "경매 등록" },
-];
-
-const FOOTER_MINE = [
-    { to: "/mypage?tab=participated", label: "참여한 경매" },
-    { to: "/mypage?tab=hosted", label: "등록한 경매" },
-    { to: "/mypage?tab=orders", label: "주문 내역" },
-    { to: "/mypage?tab=wallet", label: "예치금 지갑" },
-];
-
-const REPOSITORIES = [
-    { href: "https://github.com/prgrms-be-adv-devcourse/beadv7_7_LY_BE", label: "백엔드 저장소" },
-    { href: "https://github.com/prgrms-be-adv-devcourse/beadv7_7_LY_FE", label: "프론트엔드 저장소" },
-];
-
 function SiteFooter({ loggedIn }: { loggedIn: boolean }) {
     return (
         <footer className="border-t border-line bg-surface">
-            <div className="mx-auto grid max-w-[1180px] gap-8 px-5 py-10 sm:grid-cols-2 md:grid-cols-4">
-                <div className="sm:col-span-2 md:col-span-1">
-                    <p className="flex items-center gap-2 font-display text-[15px] font-bold tracking-tight">
-                        <span
-                            aria-hidden="true"
-                            className="block h-[18px] w-[18px] rounded-full shadow-[inset_0_0_0_1px_var(--color-line-strong)]"
-                        />
-                        Groovid
-                    </p>
-                    <p className="mt-2 max-w-[34ch] text-[12.5px] leading-relaxed text-muted">
-                        희귀 LP를 경매로 사고팔고, 실제 낙찰가로 시세를 확인하는 곳입니다.
-                    </p>
+            <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-x-10 gap-y-2.5 px-5 py-6">
+                <div className="flex items-center gap-2.5">
+                    <span
+                        aria-hidden="true"
+                        className="block h-[16px] w-[16px] rounded-full shadow-[inset_0_0_0_1px_var(--color-line-strong)]"
+                    />
+                    <span className="font-display text-[14px] font-bold tracking-tight">Groovid</span>
+                    <span className="text-[12.5px] text-muted">희귀 LP를 경매로 사고파는 곳</span>
                 </div>
-                <FooterColumn title="둘러보기">
-                    {FOOTER_BROWSE.map((item) => (
-                        <li key={item.to}>
-                            <Link to={item.to} className="hover:text-ink">
-                                {item.label}
-                            </Link>
-                        </li>
-                    ))}
-                </FooterColumn>
-                <FooterColumn title="내 정보">
-                    {/* 로그인해야 열리는 화면이라, 로그인 전에는 로그인으로 보내 헛걸음을 만들지 않는다 */}
-                    {FOOTER_MINE.map((item) => (
-                        <li key={item.to}>
-                            <Link to={loggedIn ? item.to : "/login"} className="hover:text-ink">
-                                {item.label}
-                            </Link>
-                        </li>
-                    ))}
-                </FooterColumn>
-                <FooterColumn title="프로젝트">
-                    {REPOSITORIES.map((repo) => (
-                        <li key={repo.href}>
-                            <a href={repo.href} target="_blank" rel="noreferrer" className="hover:text-ink">
-                                {repo.label} ↗
-                            </a>
-                        </li>
-                    ))}
-                </FooterColumn>
-            </div>
-            <div className="border-t border-line">
-                <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-2 px-5 py-4 text-[11.5px] text-faint">
-                    <span>© 2026 Groovid</span>
-                    <span>프로그래머스 데브코스 백엔드 과정 팀 프로젝트</span>
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[12.5px] text-muted">
+                    <Link to="/feed" className="hover:text-ink">
+                        경매 피드
+                    </Link>
+                    <Link to="/catalog" className="hover:text-ink">
+                        음반 카탈로그
+                    </Link>
+                    {/* 로그인해야 열리는 화면이라, 로그인 전에는 로그인으로 보내 헛걸음을 막는다 */}
+                    <Link to={loggedIn ? "/mypage" : "/login"} className="hover:text-ink">
+                        마이페이지
+                    </Link>
+                    <span className="text-faint">© 2026 Groovid</span>
                 </div>
             </div>
         </footer>
-    );
-}
-
-function FooterColumn({ title, children }: { title: string; children: React.ReactNode }) {
-    return (
-        <div>
-            <p className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-faint">{title}</p>
-            <ul className="mt-2.5 flex flex-col gap-1.5 text-[12.5px] text-muted">{children}</ul>
-        </div>
     );
 }
 
