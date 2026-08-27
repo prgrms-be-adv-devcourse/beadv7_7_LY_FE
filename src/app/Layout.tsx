@@ -36,7 +36,9 @@ export function Layout() {
     }
 
     return (
-        <div className="min-h-screen">
+        // 세로 방향 flex로 두고 본문이 남은 높이를 차지하게 한다 — 로그인처럼 내용이 짧은 화면에서
+        // 푸터가 화면 중간에 뜨고 그 아래가 빈 배경으로 남는 것을 막는다
+        <div className="flex min-h-screen flex-col">
             <header className="sticky top-0 z-20 border-b border-line bg-paper/90 backdrop-blur">
                 <div className="mx-auto flex max-w-[1180px] flex-wrap items-center gap-3 px-5 py-3 sm:gap-4">
                     <Link to="/" className="flex items-center gap-2 font-bold tracking-tight">
@@ -116,7 +118,7 @@ export function Layout() {
                     )}
                 </div>
             </header>
-            <main className="mx-auto max-w-[1180px] px-5 pb-20 pt-7">
+            <main className="mx-auto w-full max-w-[1180px] grow px-5 pb-20 pt-7">
                 <Outlet />
             </main>
             <SiteFooter loggedIn={session !== null} />
