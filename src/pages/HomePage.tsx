@@ -38,14 +38,26 @@ export function HomePage() {
                     <p className="mt-2 max-w-[46ch] text-sm text-muted">
                         {live.isPending
                             ? "진행 중인 경매를 불러오는 중입니다…"
-                            : "지금은 진행 중인 경매가 없습니다. 카탈로그에서 앨범을 둘러보세요."}
+                            : live.error
+                              ? "경매 목록을 불러오지 못했습니다. 잠시 후 다시 시도해주세요."
+                              : "지금은 진행 중인 경매가 없습니다. 카탈로그에서 앨범을 둘러보세요."}
                     </p>
-                    <Link
-                        to="/catalog"
-                        className="mt-5 inline-block rounded-xl bg-brand px-5 py-3 text-sm font-bold text-white hover:bg-brand-ink"
-                    >
-                        카탈로그 둘러보기
-                    </Link>
+                    {live.error ? (
+                        <button
+                            type="button"
+                            onClick={() => live.refetch()}
+                            className="mt-5 inline-block rounded-xl bg-brand px-5 py-3 text-sm font-bold text-white hover:bg-brand-ink"
+                        >
+                            다시 시도
+                        </button>
+                    ) : (
+                        <Link
+                            to="/catalog"
+                            className="mt-5 inline-block rounded-xl bg-brand px-5 py-3 text-sm font-bold text-white hover:bg-brand-ink"
+                        >
+                            카탈로그 둘러보기
+                        </Link>
+                    )}
                 </section>
             )}
             {runningCount !== undefined && runningCount > 0 && (
@@ -80,30 +92,34 @@ export function HomePage() {
                 </QueryState>
             </section>
 
-            <section className="mt-9">
-                <div className="mb-3.5 flex items-baseline justify-between">
-                    <div>
-                        <p className="text-[11px] font-bold uppercase tracking-widest text-brand">진행 중</p>
-                        <h2 className="text-lg font-bold tracking-tight">실시간 경매</h2>
+            {/* 히어로로 승격된 1건 외에 더 없으면 섹션을 통째로 접는다 — 히어로에 경매가 떠 있는데
+                바로 아래에서 "진행 중인 경매가 없습니다"라고 말하는 모순을 막는다 */}
+            {!(live.isSuccess && liveRest.length === 0) && (
+                <section className="mt-9">
+                    <div className="mb-3.5 flex items-baseline justify-between">
+                        <div>
+                            <p className="text-[11px] font-bold uppercase tracking-widest text-brand">진행 중</p>
+                            <h2 className="text-lg font-bold tracking-tight">실시간 경매</h2>
+                        </div>
+                        <Link to="/feed" className="text-[13px] font-semibold text-muted hover:text-ink">
+                            더 보기 →
+                        </Link>
                     </div>
-                    <Link to="/feed" className="text-[13px] font-semibold text-muted hover:text-ink">
-                        더 보기 →
-                    </Link>
-                </div>
-                <QueryState
-                    isLoading={live.isPending}
-                    error={live.error}
-                    onRetry={() => live.refetch()}
-                    isEmpty={liveRest.length === 0}
-                    emptyMessage="진행 중인 경매가 없습니다."
-                >
-                    <div className="grid grid-cols-2 gap-3.5 md:grid-cols-4">
-                        {liveRest.map((auction) => (
-                            <AuctionCard key={auction.auctionId} auction={auction} />
-                        ))}
-                    </div>
-                </QueryState>
-            </section>
+                    <QueryState
+                        isLoading={live.isPending}
+                        error={live.error}
+                        onRetry={() => live.refetch()}
+                        isEmpty={liveRest.length === 0}
+                        emptyMessage="진행 중인 경매가 없습니다."
+                    >
+                        <div className="grid grid-cols-2 gap-3.5 md:grid-cols-4">
+                            {liveRest.map((auction) => (
+                                <AuctionCard key={auction.auctionId} auction={auction} />
+                            ))}
+                        </div>
+                    </QueryState>
+                </section>
+            )}
         </div>
     );
 }
