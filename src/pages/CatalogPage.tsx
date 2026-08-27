@@ -147,6 +147,18 @@ export function CatalogPage() {
         setSearchBy(urlSearchBy);
     }, [urlQuery, urlSearchBy]);
 
+    // 토글은 즉시 적용되는 필터처럼 보이므로 실제로도 그렇게 동작시킨다 —
+    // 검색 결과를 보고 있는 상태면 같은 검색어로 새 대상 검색을 바로 실행
+    function changeSearchBy(next: ProductSearchBy) {
+        setSearchBy(next);
+        if (isSearchActive) {
+            setSearchParams(
+                { q: urlQuery, page: "0", ...(next === "catalog" ? { searchBy: next } : {}) },
+                { replace: true },
+            );
+        }
+    }
+
     // 검색은 엔터/버튼에서만 실행한다 — 검색 쿼리 1회가 서버에서 수 초짜리라,
     // 타이핑 중간값(디바운스)마다 쏘면 요청이 서버에서 겹쳐 돌며 전체가 느려진다
     function submitSearch(e: React.FormEvent) {
@@ -185,7 +197,7 @@ export function CatalogPage() {
             </p>
             <form onSubmit={submitSearch} className="mb-5 max-w-[520px]">
                 <div className="mb-2">
-                    <SearchByToggle value={searchBy} onChange={setSearchBy} />
+                    <SearchByToggle value={searchBy} onChange={changeSearchBy} />
                 </div>
                 <div className="flex overflow-hidden rounded-xl border-[1.5px] border-line-strong bg-surface focus-within:border-brand">
                     <span aria-hidden="true" className="flex items-center pl-4 text-faint">⌕</span>

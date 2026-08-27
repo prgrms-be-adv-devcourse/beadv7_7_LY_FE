@@ -21,11 +21,17 @@ interface ProductPickerProps {
 export function ProductPicker({ picked, onPick }: ProductPickerProps) {
     const [keyword, setKeyword] = useState("");
     const [searchBy, setSearchBy] = useState<ProductSearchBy>("name");
-    // 검색은 엔터/버튼에서만 실행한다 — 검색 쿼리가 서버에서 수 초짜리라 타이핑마다 쏘면 겹쳐서 느려진다
-    // 검색 대상도 실행 시점 값을 따로 들고 있는다 — 토글만 바꿔도 검색이 다시 나가면 안 되기 때문
+    // 검색어는 엔터/버튼에서만 실행한다 — 검색 쿼리가 서버에서 수 초짜리라 타이핑마다 쏘면 겹쳐서 느려진다
     const [submitted, setSubmitted] = useState("");
     const [submittedBy, setSubmittedBy] = useState<ProductSearchBy>("name");
     const [tooShort, setTooShort] = useState(false);
+
+    // 토글은 즉시 적용되는 필터처럼 보이므로 실제로도 그렇게 동작시킨다 —
+    // 이미 검색한 상태면 같은 검색어로 새 대상 검색을 바로 실행 (클릭 1번 = 검색 1번이라 부담 없다)
+    function changeSearchBy(next: ProductSearchBy) {
+        setSearchBy(next);
+        if (submitted.length >= 2) setSubmittedBy(next);
+    }
 
     const results = useQuery({
         // 키에 "picker"를 넣어 카탈로그 검색과 캐시를 분리한다 — 같은 키를 쓰면 요청 크기가
@@ -76,7 +82,7 @@ export function ProductPicker({ picked, onPick }: ProductPickerProps) {
     return (
         <div>
             <div className="mb-2">
-                <SearchByToggle value={searchBy} onChange={setSearchBy} />
+                <SearchByToggle value={searchBy} onChange={changeSearchBy} />
             </div>
             <div className="flex gap-2">
                 <input
