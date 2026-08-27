@@ -25,14 +25,14 @@ const PERSPECTIVES: { value: OrderPerspective; label: string }[] = [
     { value: "SELLER", label: "판매" },
 ];
 
+// 환불 상태(REFUND_REQUESTED/REFUND)는 백엔드 enum엔 있지만 신청 기능이 아직 없어
+// 항상 빈 결과만 나오는 선택지라 뺐다 — 환불 흐름이 생기면 되살린다
 const STATUSES = [
     { value: "", label: "전체 상태" },
     { value: "PENDING", label: "결제 대기" },
     { value: "ORDERED", label: "주문 완료" },
     { value: "COMPLETED", label: "거래 확정" },
     { value: "CANCELLED", label: "주문 취소" },
-    { value: "REFUND_REQUESTED", label: "환불 신청됨" },
-    { value: "REFUND", label: "환불 완료" },
 ];
 
 export function OrdersTab() {
@@ -88,14 +88,24 @@ export function OrdersTab() {
                 </select>
             </div>
 
+            {perspective === "SELLER" && (
+                <p className="mb-4 rounded-lg border border-line bg-paper px-3 py-2 text-[12.5px] text-muted">
+                    판매 주문은 조회만 됩니다 — 배송지 입력·결제·확정은 구매자가 진행하고, 거래가 확정되면
+                    정산 탭에서 정산 내역을 볼 수 있습니다.
+                </p>
+            )}
+
             <QueryState
                 isLoading={query.isPending}
                 error={query.error}
                 isEmpty={!query.data || query.data.content.length === 0}
                 emptyMessage={
-                    perspective === "BUYER"
-                        ? "낙찰받은 주문이 아직 없습니다."
-                        : "판매한 주문이 아직 없습니다."
+                    // 필터가 걸려 있으면 "아직 없다" 대신 필터 때문임을 알린다
+                    status !== ""
+                        ? `‘${STATUSES.find((s) => s.value === status)?.label}’ 상태의 주문이 없습니다. 상태 필터를 바꿔보세요.`
+                        : perspective === "BUYER"
+                          ? "낙찰받은 주문이 아직 없습니다."
+                          : "판매한 주문이 아직 없습니다."
                 }
             >
                 <p className="mb-3 text-[13px] text-muted">
