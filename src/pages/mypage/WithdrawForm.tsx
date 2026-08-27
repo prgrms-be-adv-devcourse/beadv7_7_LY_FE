@@ -19,7 +19,8 @@ function describeError(e: unknown): string {
   if (!(e instanceof ApiError)) return "인출 신청 중 문제가 생겼습니다.";
   switch (e.code) {
     case WITHDRAW_NO_BANK_ACCOUNT:
-      return "등록된 출금 계좌가 없습니다. 마이페이지에서 계좌를 먼저 등록해주세요.";
+      // TODO : 계좌 등록 화면이 생기면(백엔드 #102 등록 API 대기) 그리로 안내하는 링크로 교체
+      return "등록된 출금 계좌가 없습니다. 계좌 등록 기능은 아직 준비 중입니다.";
     case WITHDRAW_INSUFFICIENT_BALANCE:
       return "잔액이 부족합니다.";
     case WITHDRAW_LOCK_CONTENTION:
@@ -60,9 +61,21 @@ export function WithdrawForm() {
       );
       return;
     }
+    // 되돌릴 수 없이 돈이 나가는 액션이라 실지급액을 보여주고 확인받는다.
+    // 수수료 계산은 백엔드와 같은 규칙(2%, 내림)
+    const fee = Math.floor(parsed * WITHDRAW_FEE_RATE);
+    const confirmed = window.confirm(
+      `${formatWon(parsed)} 인출을 신청할까요?\n수수료 ${formatWon(fee)}를 뺀 ${formatWon(parsed - fee)}이 계좌로 지급됩니다.`,
+    );
+    if (!confirmed) return;
     setResult(null);
     withdraw.mutate();
   }
+
+  const parsedAmount = Number(amount);
+  const canPreview =
+    Number.isFinite(parsedAmount) && parsedAmount >= MIN_WITHDRAW_AMOUNT;
+  const previewFee = Math.floor(parsedAmount * WITHDRAW_FEE_RATE);
 
   return (
     <section className="rounded-2xl border border-line bg-surface px-5 py-4">
@@ -93,8 +106,9 @@ export function WithdrawForm() {
         </button>
       </form>
       <p className="mt-2 text-[13px] text-muted">
-        수수료 {WITHDRAW_FEE_RATE * 100}%를 뗀 나머지가 등록된 계좌로 즉시
-        지급됩니다.
+        {canPreview
+          ? `수수료 ${formatWon(previewFee)}를 뺀 ${formatWon(parsedAmount - previewFee)}이 등록된 계좌로 즉시 지급됩니다.`
+          : `수수료 ${WITHDRAW_FEE_RATE * 100}%를 뗀 나머지가 등록된 계좌로 즉시 지급됩니다.`}
       </p>
       {error && <p className="mt-2 text-xs font-semibold text-live">{error}</p>}
       {result && (
