@@ -14,11 +14,21 @@ import { formatWon } from "../../components/AuctionCard";
 
 const PAGE_SIZE = 10;
 
+// 요약 카드와 같은 색 규칙 — 최고 입찰은 초록, 되찾을 수 있는 밀림은 경고색
 const OUTCOME_STYLES: Record<string, string> = {
-    ACTIVE: "bg-live-bg text-live",
+    ACTIVE: "bg-up/10 text-up",
     OUTBID: "bg-surface2 text-muted",
     WON: "bg-up/90 text-white",
 };
+
+function outcomeStyle(auction: ParticipatedAuction): string {
+    // 진행 중인데 밀린 상태는 다시 입찰하면 되찾을 수 있는, 행동이 필요한 상태라 경고색으로.
+    // 종료 후의 밀림은 그냥 기록이라 회색 그대로
+    if (auction.myOutcome === "OUTBID" && auction.status === "RUNNING") {
+        return "bg-live-bg text-live";
+    }
+    return OUTCOME_STYLES[auction.myOutcome] ?? "bg-surface2 text-muted";
+}
 
 export function ParticipatedAuctionsTab() {
     const [page, setPage] = useState(0);
@@ -73,11 +83,7 @@ function ParticipatedRow({ auction }: { auction: ParticipatedAuction }) {
                     <span className="rounded-md bg-surface2 px-2 py-0.5 text-[11px] font-bold text-muted">
                         {formatAuctionStatus(auction.status)}
                     </span>
-                    <span
-                        className={`rounded-md px-2 py-0.5 text-[11px] font-bold ${
-                            OUTCOME_STYLES[auction.myOutcome] ?? "bg-surface2 text-muted"
-                        }`}
-                    >
+                    <span className={`rounded-md px-2 py-0.5 text-[11px] font-bold ${outcomeStyle(auction)}`}>
                         {formatBidOutcome(auction.myOutcome)}
                     </span>
                 </div>
