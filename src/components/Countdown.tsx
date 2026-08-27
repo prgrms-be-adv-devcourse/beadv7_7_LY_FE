@@ -31,7 +31,9 @@ function formatCoarse(ms: number): string {
     return `${hours}시간`;
 }
 
-export function Countdown({ endsAt }: { endsAt: number }) {
+// expiredLabel: 시각이 지났을 때 보여줄 문구. 종료 카운트다운이면 기본값 그대로, 시작 카운트다운이면
+// "곧 시작"처럼 바꿔 쓴다 — 시작 시각이 지나도 스케줄러가 상태를 옮기기 전까지는 SCHEDULED로 남기 때문
+export function Countdown({ endsAt, expiredLabel = "종료" }: { endsAt: number; expiredLabel?: string }) {
     // 임박(1시간 미만)해야만 초 단위로 움직인다. 여유 구간은 1분에 한 번만 갱신 —
     // 임박 구간으로 넘어가는 시점도 최대 1분 오차로 따라잡는다
     const soonAtMount = endsAt - Date.now() < 3600_000;
@@ -49,7 +51,7 @@ export function Countdown({ endsAt }: { endsAt: number }) {
                     soon ? "bg-live animate-[live-pulse_1.1s_infinite] motion-reduce:animate-none" : "bg-faint"
                 }`}
             />
-            {soon || remaining <= 0 ? formatRemaining(remaining) : formatCoarse(remaining)}
+            {remaining <= 0 ? expiredLabel : soon ? formatRemaining(remaining) : formatCoarse(remaining)}
         </span>
     );
 }

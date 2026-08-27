@@ -54,7 +54,15 @@ export function AuctionCard({ auction, className = "" }: { auction: AuctionListI
                 <div className="text-right text-[11px] text-muted">
                     <span className="font-mono">{auction.bidCount}</span> 입찰
                     <br />
-                    <Countdown endsAt={parseServerTime(auction.endAt)} />
+                    {auction.status === "SCHEDULED" ? (
+                        // 시작 전 경매는 종료가 아니라 시작까지 남은 시간이 궁금하다
+                        <>
+                            시작까지{" "}
+                            <Countdown endsAt={parseServerTime(auction.startAt)} expiredLabel="곧 시작" />
+                        </>
+                    ) : (
+                        <Countdown endsAt={parseServerTime(auction.endAt)} />
+                    )}
                 </div>
             </div>
         </Link>
