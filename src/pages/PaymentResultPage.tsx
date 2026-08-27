@@ -64,13 +64,18 @@ export function PaymentSuccessPage() {
 
     if (confirm.isPending) {
         return (
-            <ResultCard tone="neutral" title="결제를 확인하는 중입니다">
+            // 확인이 끝나기 전에 떠나면 안 되는 화면이라 이동 버튼을 감춘다 —
+            // "창을 닫지 마세요" 옆에 지갑으로 가는 버튼이 있으면 안내가 스스로 무너진다
+            <ResultCard tone="neutral" title="결제를 확인하는 중입니다" showActions={false}>
+                <div className="flex justify-center py-2" role="status" aria-label="확인 중">
+                    <span className="h-6 w-6 animate-spin rounded-full border-2 border-line-strong border-t-brand" />
+                </div>
                 <p>결제사에 승인을 요청하고 있습니다. 창을 닫지 마세요.</p>
                 {confirm.failureCount > 0 && (
                     <p className="mt-2">
-                        결제 앱에서 승인이 아직 안 끝난 것 같습니다. 앱에서 결제를 마치면 이 화면이 알아서
-                        넘어갑니다 — <span className="font-mono tabular-nums">{confirm.failureCount}</span>번째
-                        확인 중입니다.
+                        결제 앱에서 승인이 아직 안 끝난 것 같습니다.{" "}
+                        <span className="font-mono tabular-nums">{confirm.failureCount}</span>번 확인했고, 잠시 후
+                        자동으로 다시 확인합니다 — 앱에서 결제를 마치면 이 화면이 알아서 넘어갑니다.
                     </p>
                 )}
             </ResultCard>
@@ -128,6 +133,8 @@ interface ResultCardProps {
     tone: "success" | "error" | "neutral";
     title: string;
     children: React.ReactNode;
+    // 승인 확인처럼 화면을 떠나면 안 되는 상태에서는 이동 버튼을 감춘다
+    showActions?: boolean;
 }
 
 const TONE_STYLES: Record<string, string> = {
@@ -136,11 +143,12 @@ const TONE_STYLES: Record<string, string> = {
     neutral: "border-line bg-surface",
 };
 
-function ResultCard({ tone, title, children }: ResultCardProps) {
+function ResultCard({ tone, title, children, showActions = true }: ResultCardProps) {
     return (
         <div className={`mx-auto max-w-[520px] rounded-2xl border px-6 py-10 text-center ${TONE_STYLES[tone]}`}>
             <h1 className="text-lg font-bold tracking-tight">{title}</h1>
             <div className="mt-2 text-[13.5px] text-muted">{children}</div>
+            {showActions && (
             <div className="mt-5 flex justify-center gap-2">
                 <Link
                     to="/mypage?tab=wallet"
@@ -155,6 +163,7 @@ function ResultCard({ tone, title, children }: ResultCardProps) {
                     경매 둘러보기
                 </Link>
             </div>
+            )}
         </div>
     );
 }
