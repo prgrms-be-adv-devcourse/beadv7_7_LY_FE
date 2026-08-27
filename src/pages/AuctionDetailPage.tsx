@@ -63,6 +63,20 @@ function BidBox({ auction }: { auction: AuctionDetail }) {
         },
     });
 
+    // 버튼으로 금액을 올리고 내린다. 단위에 안 맞는 값을 직접 입력한 뒤 눌러도
+    // 단위에 맞는 값으로 떨어지게 맞춰준다 (올릴 땐 위쪽, 내릴 땐 아래쪽 값으로)
+    function stepBid(direction: 1 | -1) {
+        if (ended) return;
+        // 비었거나 최소 미만이면 어느 방향이든 최소 입찰가로 되돌린다
+        if (!Number.isFinite(bidAmount) || bidAmount < nextBid) {
+            setAmountInput(String(nextBid));
+            return;
+        }
+        const steps = (bidAmount - nextBid) / auction.bidUnit;
+        const nextSteps = direction > 0 ? Math.floor(steps) + 1 : Math.ceil(steps) - 1;
+        setAmountInput(String(nextBid + Math.max(0, nextSteps) * auction.bidUnit));
+    }
+
     function submitBid() {
         if (bidMutation.isPending || ended) return;
         if (!Number.isFinite(bidAmount) || bidAmount <= 0) {
@@ -98,10 +112,19 @@ function BidBox({ auction }: { auction: AuctionDetail }) {
             <VuCountdown startedAt={parseServerTime(auction.startAt)} endsAt={parseServerTime(auction.endAt)} />
             {session ? (
                 <div className="mt-4">
-                    <label className="block">
-                        <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-faint">
-                            입찰 금액
-                        </span>
+                    <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-faint">
+                        입찰 금액
+                    </span>
+                    <div className="flex items-stretch gap-1.5">
+                        <button
+                            type="button"
+                            onClick={() => stepBid(-1)}
+                            disabled={ended || bidAmount <= nextBid}
+                            aria-label={`${formatWon(auction.bidUnit)} 내리기`}
+                            className="w-11 shrink-0 rounded-xl border border-line bg-paper text-lg font-bold text-muted transition-colors hover:border-line-strong hover:text-ink disabled:opacity-40"
+                        >
+                            −
+                        </button>
                         <input
                             type="number"
                             inputMode="numeric"
@@ -109,13 +132,23 @@ function BidBox({ auction }: { auction: AuctionDetail }) {
                             step={auction.bidUnit}
                             value={amountInput ?? String(nextBid)}
                             disabled={ended}
+                            aria-label="입찰 금액"
                             onChange={(e) => setAmountInput(e.target.value)}
                             onKeyDown={(e) => {
                                 if (e.key === "Enter") submitBid();
                             }}
-                            className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-right font-mono text-[15px] font-bold tabular-nums outline-none focus:border-line-strong"
+                            className="min-w-0 grow rounded-xl border border-line bg-paper px-3 py-2 text-right font-mono text-[15px] font-bold tabular-nums outline-none focus:border-line-strong"
                         />
-                    </label>
+                        <button
+                            type="button"
+                            onClick={() => stepBid(1)}
+                            disabled={ended}
+                            aria-label={`${formatWon(auction.bidUnit)} 올리기`}
+                            className="w-11 shrink-0 rounded-xl border border-line bg-paper text-lg font-bold text-muted transition-colors hover:border-line-strong hover:text-ink disabled:opacity-40"
+                        >
+                            +
+                        </button>
+                    </div>
                     <p className="mt-1 text-[11.5px] text-faint">
                         최소 {formatWon(nextBid)} · {formatWon(auction.bidUnit)} 단위로 올릴 수 있습니다
                     </p>
