@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatCondition, getAuctionDetail, parseServerTime, placeBid, type AuctionDetail } from "../api/auctions";
 import { ApiError } from "../api/client";
 import { getMyProfile } from "../api/members";
-import { useNow } from "../components/Countdown";
+import { Countdown, useNow } from "../components/Countdown";
 import { useSession } from "../auth/session";
 import { VinylCover } from "../components/VinylCover";
 import { QueryState } from "../components/QueryState";
@@ -149,6 +149,22 @@ function BidBox({ auction }: { auction: AuctionDetail }) {
     );
 }
 
+function ScheduledBox({ auction }: { auction: AuctionDetail }) {
+    return (
+        <aside className="rounded-2xl border-[1.5px] border-line-strong bg-surface p-5 shadow-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-faint">경매 예정</p>
+            <p className="mt-1 text-xl font-bold">시작 전</p>
+            <p className="mt-2 text-sm text-muted">
+                시작까지 <Countdown endsAt={parseServerTime(auction.startAt)} expiredLabel="곧 시작" />
+            </p>
+            <p className="mt-2 text-sm text-muted">
+                {new Date(parseServerTime(auction.startAt)).toLocaleString("ko-KR")} 시작 예정 · 시작가{" "}
+                {formatWon(auction.startBidAmount)}
+            </p>
+        </aside>
+    );
+}
+
 function EndedBox({ auction }: { auction: AuctionDetail }) {
     const session = useSession();
     // 서버가 종료 상태에는 요청자 기준 필드(myHighest 같은)를 안 주므로, 낙찰자 닉네임(회원 유일값,
@@ -164,12 +180,6 @@ function EndedBox({ auction }: { auction: AuctionDetail }) {
         <aside className="rounded-2xl border-[1.5px] border-line-strong bg-surface p-5 shadow-sm">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-faint">경매 결과</p>
             <p className="mt-1 text-xl font-bold">{STATUS_LABELS[auction.status] ?? auction.status}</p>
-            {auction.status === "SCHEDULED" && (
-                <p className="mt-2 text-sm text-muted">
-                    {new Date(parseServerTime(auction.startAt)).toLocaleString("ko-KR")} 시작 예정 · 시작가{" "}
-                    {formatWon(auction.startBidAmount)}
-                </p>
-            )}
             {auction.winningBid && (
                 <p className="mt-2 text-sm text-muted">
                     낙찰가 <b className="font-mono tabular-nums text-ink">{formatWon(auction.winningBid.amount)}</b> ·{" "}
@@ -192,6 +202,14 @@ function EndedBox({ auction }: { auction: AuctionDetail }) {
             )}
             {auction.status === "ENDED_FAILED" && <p className="mt-2 text-sm text-muted">입찰자가 없어 유찰되었습니다.</p>}
             {auction.status === "CLOSING" && <p className="mt-2 text-sm text-muted">마감 후 낙찰 결과를 계산하고 있습니다.</p>}
+            {auction.status === "CANCELED" && (
+                <p className="mt-2 text-sm text-muted">판매자가 시작 전에 취소한 경매입니다.</p>
+            )}
+            {auction.status === "FORCE_CANCELED" && (
+                <p className="mt-2 text-sm text-muted">
+                    운영자가 중단한 경매입니다. 입찰로 묶여 있던 예치금은 지갑으로 돌아옵니다.
+                </p>
+            )}
         </aside>
     );
 }
@@ -264,8 +282,14 @@ export function AuctionDetailPage() {
         queryFn: () => getAuctionDetail(auctionId),
         enabled: auctionId !== "",
         // 전역에서 refetchOnWindowFocus를 꺼놔서, 남이 입찰해도 이 화면은 저절로 갱신되지 않는다.
-        // 진행 중 경매만 주기적으로 다시 읽어 현재가·다음 입찰가를 최신으로 유지한다
-        refetchInterval: (query) => (query.state.data?.status === "RUNNING" ? 5_000 : false),
+        // 진행 중엔 현재가를, 낙찰 처리 중엔 결과를 기다리는 화면이라 주기적으로 다시 읽는다.
+        // 시작 전엔 시작 시각이 지나면 진행 중 화면으로 넘어가도록 느슨하게만 확인한다
+        refetchInterval: (query) => {
+            const status = query.state.data?.status;
+            if (status === "RUNNING" || status === "CLOSING") return 5_000;
+            if (status === "SCHEDULED") return 30_000;
+            return false;
+        },
     });
 
     const auction = auctionQuery.data;
@@ -352,7 +376,13 @@ export function AuctionDetailPage() {
                             </section>
                         </div>
 
-                        {auction.status === "RUNNING" ? <BidBox auction={auction} /> : <EndedBox auction={auction} />}
+                        {auction.status === "RUNNING" ? (
+                            <BidBox auction={auction} />
+                        ) : auction.status === "SCHEDULED" ? (
+                            <ScheduledBox auction={auction} />
+                        ) : (
+                            <EndedBox auction={auction} />
+                        )}
                     </div>
                 </div>
             )}
