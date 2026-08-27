@@ -375,6 +375,13 @@ export function AuctionDetailPage() {
                                         </Link>
                                     </h1>
                                     <p className="mt-1 text-base font-bold text-brand">{auction.product.artistName}</p>
+                                    {auction.extensionEnabled && auction.extensionTime !== null && (
+                                        // 마감 직전에 넣으면 끝나는 줄 알고 있다가 시간이 늘어난다 — 미리 알려준다
+                                        <p className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-amber/15 px-2.5 py-1 text-[12px] font-semibold text-ink">
+                                            <span className="text-amber">⏱</span>
+                                            마감 {auction.extensionTime}분 안에 입찰이 들어오면 {auction.extensionTime}분 연장됩니다
+                                        </p>
+                                    )}
                                     <dl className="mt-5 grid w-fit grid-cols-3 gap-x-9 gap-y-3.5 border-t border-line pt-4">
                                         {[
                                             ["컨디션", formatCondition(auction.itemCondition)],
