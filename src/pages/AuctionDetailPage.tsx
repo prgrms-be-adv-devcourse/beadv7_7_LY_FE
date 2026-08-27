@@ -3,6 +3,8 @@ import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatCondition, getAuctionDetail, parseServerTime, placeBid, type AuctionDetail } from "../api/auctions";
 import { ApiError } from "../api/client";
+import { getMyProfile } from "../api/members";
+import { useNow } from "../components/Countdown";
 import { useSession } from "../auth/session";
 import { VinylCover } from "../components/VinylCover";
 import { QueryState } from "../components/QueryState";
@@ -38,6 +40,11 @@ function BidBox({ auction }: { auction: AuctionDetail }) {
     const [amountInput, setAmountInput] = useState<string | null>(null);
     const bidAmount = amountInput === null ? nextBid : Number(amountInput);
 
+    // 마감 시각이 지나면 서버가 상태를 옮기기 전(폴링 5초 + 스케줄러 지연)에도 입력·버튼을 잠근다 —
+    // 어차피 서버가 거절할 입찰을 눌리게 두면 마지막 순간의 사용자가 실패 메시지만 받는다
+    const now = useNow();
+    const ended = now >= parseServerTime(auction.endAt);
+
     const bidMutation = useMutation({
         mutationFn: (amount: number) => placeBid(auction.auctionId, amount),
         onSuccess: (_, amount) => {
@@ -57,7 +64,7 @@ function BidBox({ auction }: { auction: AuctionDetail }) {
     });
 
     function submitBid() {
-        if (bidMutation.isPending) return;
+        if (bidMutation.isPending || ended) return;
         if (!Number.isFinite(bidAmount) || bidAmount <= 0) {
             showToast("입찰 금액을 숫자로 입력해주세요.");
             return;
@@ -101,6 +108,7 @@ function BidBox({ auction }: { auction: AuctionDetail }) {
                             min={nextBid}
                             step={auction.bidUnit}
                             value={amountInput ?? String(nextBid)}
+                            disabled={ended}
                             onChange={(e) => setAmountInput(e.target.value)}
                             onKeyDown={(e) => {
                                 if (e.key === "Enter") submitBid();
@@ -114,14 +122,16 @@ function BidBox({ auction }: { auction: AuctionDetail }) {
                     <button
                         type="button"
                         onClick={submitBid}
-                        disabled={bidMutation.isPending}
+                        disabled={bidMutation.isPending || ended}
                         className="mt-2.5 w-full rounded-xl bg-live py-3.5 text-[15px] font-extrabold text-white transition-colors hover:bg-live/90 disabled:opacity-60"
                     >
-                        {bidMutation.isPending
-                            ? "입찰 중…"
-                            : Number.isFinite(bidAmount)
-                              ? `${formatWon(bidAmount)} 입찰하기`
-                              : "입찰하기"}
+                        {ended
+                            ? "경매가 마감되었습니다"
+                            : bidMutation.isPending
+                              ? "입찰 중…"
+                              : Number.isFinite(bidAmount) && bidAmount > 0
+                                ? `${formatWon(bidAmount)} 입찰하기`
+                                : "입찰하기"}
                     </button>
                 </div>
             ) : (
@@ -140,6 +150,16 @@ function BidBox({ auction }: { auction: AuctionDetail }) {
 }
 
 function EndedBox({ auction }: { auction: AuctionDetail }) {
+    const session = useSession();
+    // 서버가 종료 상태에는 요청자 기준 필드(myHighest 같은)를 안 주므로, 낙찰자 닉네임(회원 유일값,
+    // 마스킹 없이 내려옴)과 내 프로필 닉네임을 비교해 낙찰자인지 판별한다
+    const profile = useQuery({
+        queryKey: ["member", "me"],
+        queryFn: getMyProfile,
+        enabled: session !== null && auction.status === "ENDED_WON",
+    });
+    const isWinner = auction.winningBid != null && profile.data?.nickname === auction.winningBid.bidder;
+
     return (
         <aside className="rounded-2xl border-[1.5px] border-line-strong bg-surface p-5 shadow-sm">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-faint">경매 결과</p>
@@ -155,6 +175,20 @@ function EndedBox({ auction }: { auction: AuctionDetail }) {
                     낙찰가 <b className="font-mono tabular-nums text-ink">{formatWon(auction.winningBid.amount)}</b> ·{" "}
                     {auction.winningBid.bidder}
                 </p>
+            )}
+            {isWinner && (
+                <div className="mt-3 rounded-xl border border-up/40 bg-up/10 px-3.5 py-3">
+                    <p className="text-sm font-bold text-up">내가 낙찰받았습니다</p>
+                    <p className="mt-1 text-[13px] text-muted">
+                        마이페이지 주문에서 배송지를 입력하고 결제하면 거래가 진행됩니다.
+                    </p>
+                    <Link
+                        to="/mypage?tab=orders"
+                        className="mt-2.5 inline-block rounded-lg bg-brand px-4 py-2 text-[13px] font-bold text-white hover:bg-brand-ink"
+                    >
+                        주문 확인하러 가기 →
+                    </Link>
+                </div>
             )}
             {auction.status === "ENDED_FAILED" && <p className="mt-2 text-sm text-muted">입찰자가 없어 유찰되었습니다.</p>}
             {auction.status === "CLOSING" && <p className="mt-2 text-sm text-muted">마감 후 낙찰 결과를 계산하고 있습니다.</p>}

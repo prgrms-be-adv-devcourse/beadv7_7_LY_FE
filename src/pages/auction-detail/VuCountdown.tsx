@@ -79,7 +79,8 @@ export function VuCountdown({ startedAt, endsAt }: { startedAt: number; endsAt: 
             </svg>
             <div className="min-w-0">
                 <p className={`text-[10px] font-bold uppercase tracking-[0.1em] ${hot ? "text-live" : "text-faint"}`}>
-                    마감까지
+                    {/* 시각이 지나면 아래 숫자가 "종료"로 바뀌므로 "마감까지 종료"가 되지 않게 라벨을 줄인다 */}
+                    {remaining <= 0 ? "마감" : "마감까지"}
                 </p>
                 <p className={`font-mono text-[22px] font-bold tabular-nums ${hot ? "text-live" : "text-ink"}`}>
                     {formatRemaining(remaining)}
