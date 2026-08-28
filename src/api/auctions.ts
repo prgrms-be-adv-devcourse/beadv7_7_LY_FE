@@ -93,6 +93,10 @@ export interface AuctionDetail {
     itemCondition: string;
     itemDescription: string | null;
     itemImages: string[] | null;
+    // 등록할 때 나눠 받은 두 값. 응답 이름은 shippingPrice지만 등록·수정 본문에서는 shippingFee다
+    startPrice: number;
+    shippingPrice: number;
+    // 입찰이 시작되는 금액 = startPrice + shippingPrice
     startBidAmount: number;
     bidUnit: number;
     startAt: string;

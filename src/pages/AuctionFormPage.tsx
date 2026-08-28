@@ -14,7 +14,6 @@ import {
 import { ApiError } from "../api/client";
 import { useSession } from "../auth/session";
 import { QueryState } from "../components/QueryState";
-import { formatWon } from "../components/AuctionCard";
 import { ProductPicker, type PickedProduct } from "./auction-form/ProductPicker";
 import { ImagePicker, type LocalImage, type PickedImage } from "./auction-form/ImagePicker";
 import {
@@ -116,7 +115,6 @@ function EditAuction({ auctionId }: { auctionId: number }) {
                     auctionId={auctionId}
                     originalStartAt={toInputValueFromServer(detail.startAt)}
                     originalStatus={detail.status}
-                    originalStartBidAmount={detail.startBidAmount}
                     originalImages={detail.itemImages ?? []}
                     initialProduct={{
                         productId: detail.product.productId,
@@ -128,9 +126,8 @@ function EditAuction({ auctionId }: { auctionId: number }) {
                         productId: detail.product.productId,
                         itemCondition: detail.itemCondition,
                         itemDescription: detail.itemDescription ?? "",
-                        // 서버가 시작가와 배송비를 합쳐서만 주기 때문에 되살릴 수 없다 — 다시 받는다
-                        startPrice: "",
-                        shippingFee: "",
+                        startPrice: String(detail.startPrice),
+                        shippingFee: String(detail.shippingPrice),
                         bidUnit: String(detail.bidUnit),
                         startAt: toInputValueFromServer(detail.startAt),
                         endAt: toInputValueFromServer(detail.endAt),
@@ -150,7 +147,6 @@ interface AuctionFormProps {
     initialProduct?: PickedProduct;
     originalStartAt?: string;
     originalStatus?: string;
-    originalStartBidAmount?: number;
     originalImages?: string[];
 }
 
@@ -227,7 +223,6 @@ function AuctionForm({
     initialProduct,
     originalStartAt,
     originalStatus,
-    originalStartBidAmount,
     originalImages = [],
 }: AuctionFormProps) {
     const navigate = useNavigate();
@@ -485,12 +480,6 @@ function AuctionForm({
                 </Section>
 
                 <Section title="가격" hint="시작가·배송비·입찰 단위">
-                    {editing && originalStartBidAmount !== undefined && (
-                        <p className="mb-3 rounded-lg border border-line bg-paper px-3 py-2 text-[12.5px] text-muted">
-                            지금 등록된 시작가와 배송비를 합치면 {formatWon(originalStartBidAmount)}입니다. 서버가 둘을
-                            나눠서 알려주지 않아 다시 입력해야 합니다.
-                        </p>
-                    )}
                     <div className="grid gap-3 sm:grid-cols-3">
                         <NumberField
                             label="시작가"
