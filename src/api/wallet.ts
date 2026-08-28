@@ -23,7 +23,8 @@ export interface PointTransaction {
   type: PointTransactionType;
   // 부호가 붙어서 온다 — 차감 거래(HOLD·DEPOSIT_CANCEL·WITHDRAW)는 음수
   amount: number;
-  // 이름은 auction이지만 실제로는 홀드·충전 등 거래를 만든 쪽의 id가 들어온다
+  // 이름은 auction이지만 실제로는 홀드·충전 등 거래를 만든 쪽의 id가 들어온다.
+  // 유형마다 가리키는 대상이 달라 사용자에게 보여줄 수 없어, 지금은 화면에서 쓰지 않는다
   relatedAuctionId: number | null;
   createdAt: string;
 }
@@ -86,21 +87,6 @@ export const DEPOSIT_ALREADY_PROCESSED = "DERR-3001";
 // 결제사가 승인을 거절했다는 응답. QR·앱 결제처럼 승인이 늦게 끝나는 흐름에서는
 // 아직 승인 전이라 거절된 것일 수 있어, 잠시 뒤 다시 물어보면 통과한다
 export const DEPOSIT_PG_ERROR = "DERR-3008";
-
-// POST /api/v1/deposits/{depositId}/cancel — 충전을 되돌린다.
-// 서버가 사유를 필수로 받고, 잔액이 충전액보다 적으면 거절한다
-export function cancelDeposit(
-  depositId: number,
-  reason: string,
-): Promise<void> {
-  return apiPost<void>(`/api/v1/deposits/${depositId}/cancel`, { reason });
-}
-
-// 충전 요청 응답에는 취소에 쓸 id가 없다. 대신 충전이 반영될 때 남는 거래 기록에
-// 그 충전 건의 id가 함께 저장되므로, 충전 기록에서 되짚어 쓴다
-export function findDepositId(transaction: PointTransaction): number | null {
-  return transaction.type === "DEPOSIT" ? transaction.relatedAuctionId : null;
-}
 
 const TRANSACTION_TYPE_LABELS: Record<string, string> = {
   DEPOSIT: "충전",
