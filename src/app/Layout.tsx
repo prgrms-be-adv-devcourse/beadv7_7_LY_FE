@@ -38,7 +38,7 @@ export function Layout() {
     return (
         // 세로 방향 flex로 두고 본문이 남은 높이를 차지하게 한다 — 로그인처럼 내용이 짧은 화면에서
         // 푸터가 화면 중간에 뜨고 그 아래가 빈 배경으로 남는 것을 막는다
-        <div className="flex min-h-screen flex-col">
+        <div className="flex min-h-screen flex-col overflow-x-clip">
             <header className="sticky top-0 z-20 border-b border-line bg-paper/90 backdrop-blur">
                 <div className="mx-auto flex max-w-[1180px] flex-wrap items-center gap-3 px-5 py-3 sm:gap-4">
                     <Link to="/" className="flex items-center gap-2 font-bold tracking-tight">
@@ -129,28 +129,28 @@ export function Layout() {
 
 function SiteFooter({ loggedIn }: { loggedIn: boolean }) {
     return (
-        <footer className="border-t border-line bg-surface">
+        <footer className="border-t border-hero-line bg-hero">
             <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-x-10 gap-y-2.5 px-5 py-6">
                 <div className="flex items-center gap-2.5">
                     <span
                         aria-hidden="true"
-                        className="block h-[16px] w-[16px] rounded-full shadow-[inset_0_0_0_1px_var(--color-line-strong)]"
+                        className="block h-[16px] w-[16px] rounded-full shadow-[inset_0_0_0_1px_var(--color-hero-line)]"
                     />
-                    <span className="font-display text-[14px] font-bold tracking-tight">Groovid</span>
-                    <span className="text-[12.5px] text-muted">희귀 LP를 경매로 사고파는 곳</span>
+                    <span className="font-display text-[14px] font-bold tracking-tight text-hero-cream">Groovid</span>
+                    <span className="text-[12.5px] text-hero-dim">희귀 LP를 경매로 사고파는 곳</span>
                 </div>
-                <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[12.5px] text-muted">
-                    <Link to="/feed" className="hover:text-ink">
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[12.5px] text-hero-dim">
+                    <Link to="/feed" className="hover:text-hero-cream">
                         경매 피드
                     </Link>
-                    <Link to="/catalog" className="hover:text-ink">
+                    <Link to="/catalog" className="hover:text-hero-cream">
                         음반 카탈로그
                     </Link>
                     {/* 로그인해야 열리는 화면이라, 로그인 전에는 로그인으로 보내 헛걸음을 막는다 */}
-                    <Link to={loggedIn ? "/mypage" : "/login"} className="hover:text-ink">
+                    <Link to={loggedIn ? "/mypage" : "/login"} className="hover:text-hero-cream">
                         마이페이지
                     </Link>
-                    <span className="text-faint">© 2026 Groovid</span>
+                    <span className="text-hero-dim/70">© 2026 Groovid</span>
                 </div>
             </div>
         </footer>
