@@ -1,14 +1,6 @@
-import { parseServerTime, type AuctionStatus, type BidInfo } from "../../api/auctions";
+import type { AuctionStatus, BidInfo } from "../../api/auctions";
 import { formatWon } from "../../components/AuctionCard";
-
-function formatAgo(placedAt: string): string {
-    const diffMin = Math.floor((Date.now() - parseServerTime(placedAt)) / 60_000);
-    if (diffMin < 1) return "방금";
-    if (diffMin < 60) return `${diffMin}분 전`;
-    const diffHour = Math.floor(diffMin / 60);
-    if (diffHour < 24) return `${diffHour}시간 전`;
-    return `${Math.floor(diffHour / 24)}일 전`;
-}
+import { formatAgo } from "../../lib/format";
 
 export function BidLog({ entries, status }: { entries: BidInfo[]; status: AuctionStatus }) {
     if (entries.length === 0) {

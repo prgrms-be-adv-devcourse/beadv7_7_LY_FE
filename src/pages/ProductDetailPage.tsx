@@ -6,6 +6,7 @@ import { VinylCover } from "../components/VinylCover";
 import { QueryState } from "../components/QueryState";
 import { LikeButton } from "../components/LikeButton";
 import { formatWon } from "../components/AuctionCard";
+import { formatAgo } from "../lib/format";
 import { GRADED_CONDITIONS, PriceSparkline } from "./product-detail/PriceSparkline";
 import { OpenAuctionList } from "./product-detail/OpenAuctionList";
 
@@ -18,6 +19,11 @@ const CONDITION_SHORT: Record<string, string> = {
     GOOD: "G",
     POOR: "P",
 };
+
+// 최근 낙찰 행에는 등급 기호만 쓴다 ("M · Mint" → "M")
+function shortCondition(condition: string): string {
+    return (CONDITION_SHORT[condition] ?? condition).split(" ")[0];
+}
 
 // 차트 컨디션 필터. 기본은 M·NM — 하위 컨디션까지 섞으면 선이 출렁여 흐름이 안 보인다 (PriceSparkline 참고)
 const CHART_FILTERS: { key: string; label: string; conditions: string[] | null }[] = [
@@ -167,6 +173,32 @@ export function ProductDetailPage() {
                                 </div>
                                 <PriceSparkline trades={trades} conditions={chartFilter.conditions} />
                                 <p className="mt-2 text-[11.5px] text-faint">{chartFilter.label} 컨디션 낙찰가 기준</p>
+                                {filteredTrades.length > 0 && (
+                                    <div className="mt-5 border-t border-line pt-3.5">
+                                        <p className="text-[11px] font-bold uppercase tracking-wider text-faint">최근 낙찰</p>
+                                        <div className="mt-1">
+                                            {filteredTrades
+                                                .slice(-6)
+                                                .reverse()
+                                                .map((trade, i) => (
+                                                    <div
+                                                        key={`${trade.tradedAt}-${i}`}
+                                                        className="grid grid-cols-[1fr_auto_auto] items-center gap-4 border-b border-line py-2.5 last:border-b-0"
+                                                    >
+                                                        <span className="text-[12.5px] font-semibold text-muted">
+                                                            {shortCondition(trade.condition)}
+                                                        </span>
+                                                        <span className="font-mono text-sm font-bold tabular-nums">
+                                                            {formatWon(trade.price)}
+                                                        </span>
+                                                        <span className="min-w-[62px] text-right text-[11.5px] text-faint">
+                                                            {formatAgo(trade.tradedAt)}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                        </div>
+                                    </div>
+                                )}
                             </QueryState>
                         </div>
                     </section>
