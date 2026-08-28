@@ -146,6 +146,21 @@ export function fetchProductList(page: number, size = 20): Promise<ProductListRe
     return apiGet<ProductListResponse>(`/api/v1/products?${params}`);
 }
 
+// GET /api/v1/products/price-trades/recent — 사이트 전체 최근 낙찰 (홈 최근 낙찰 목록용)
+export interface RecentTrade {
+    productId: number;
+    title: string;
+    artistName: string | null;
+    coverImageUrl: string | null;
+    condition: string;
+    price: number;
+    tradedAt: string;
+}
+
+export function fetchRecentTrades(size = 6): Promise<{ trades: RecentTrade[] }> {
+    return apiGet<{ trades: RecentTrade[] }>(`/api/v1/products/price-trades/recent?size=${size}`);
+}
+
 export function getProductDetail(productId: string | number): Promise<ProductDetail> {
     return apiGet<ProductDetail>(`/api/v1/products/${productId}`);
 }

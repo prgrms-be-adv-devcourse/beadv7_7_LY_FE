@@ -38,6 +38,10 @@
     --color-up-bg: #e4efe8;
     --color-amber: #e5a13d;
     --color-glow: #f3c476;
+    --color-hero: #191a16;
+    --color-hero-line: #32332c;
+    --color-hero-cream: #f3f1e8;
+    --color-hero-dim: #b5b3a6;
     --font-sans: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo",
         "Malgun Gothic", sans-serif;
     --font-display: "MaruBuri", Georgia, "Times New Roman", serif;
