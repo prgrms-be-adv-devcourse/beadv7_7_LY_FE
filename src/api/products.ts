@@ -1,4 +1,4 @@
-import { apiGet } from "./client";
+import { apiGet, apiPost } from "./client";
 
 export interface ProductSearchCard {
     productId: number;
@@ -15,6 +15,9 @@ export interface ProductSearchResponse {
     size: number;
     totalElements: number;
     hasNext: boolean;
+    // 이 검색을 가리키는 값. 결과를 눌렀을 때 그대로 돌려보내면 서버가 클릭을 이 검색에 이어 붙인다.
+    // 검색어를 바꾸거나 페이지를 넘기면 새 값이 오므로, 지금 화면에 보이는 결과를 만든 응답의 값을 써야 한다
+    searchId: string;
 }
 
 export interface ProductDetail {
@@ -99,6 +102,20 @@ export function searchProducts(
     }
     // signal: 새 검색이 시작되면 이전 요청을 취소한다 — 연결이 끊기면 서버(MySQL) 쿼리도 중단된다
     return apiGet<ProductSearchResponse>(`/api/v1/search/products?${params}`, signal);
+}
+
+// POST /api/v1/search/clicks — 검색 결과 중 무엇을 눌렀는지 서버에 남긴다.
+// 검색 품질을 사람이 정한 정답이 아니라 실제 사용자 행동으로 재기 위한 기록이다.
+//
+// rank는 전체 결과에서 몇 번째인지다(1부터, 페이지를 넘어가도 이어 센다). 페이지마다 1로 되돌리면
+// "1페이지의 1번"과 "3페이지의 1번"이 같은 값이 되어, 원하는 것을 찾기까지 얼마나 내려갔는지 알 수 없다.
+//
+// 결과를 기다리지 않고 보내기만 한다 — 사용자는 상품 상세로 넘어가는 중이고, 기록이 실패해도
+// 그 이동이 막히면 안 된다. 유실돼도 통계가 조금 비는 것뿐이다.
+export function recordSearchClick(searchId: string, productId: number, rank: number): void {
+    void apiPost("/api/v1/search/clicks", { searchId, productId, rank }).catch(() => {
+        // 기록 실패는 삼킨다
+    });
 }
 
 // GET /api/v1/products — 카탈로그 둘러보기 목록.

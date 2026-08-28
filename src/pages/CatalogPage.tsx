@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { fetchProductList, searchProducts, type ProductSearchBy } from "../api/products";
+import { fetchProductList, recordSearchClick, searchProducts, type ProductSearchBy } from "../api/products";
 import { SearchByToggle } from "../components/SearchByToggle";
 import { VinylCover } from "../components/VinylCover";
 import { QueryState } from "../components/QueryState";
@@ -39,13 +39,15 @@ interface CatalogCard {
     openAuctionCount?: number | null;
 }
 
-function ProductCard({ card }: { card: CatalogCard }) {
+// onSelect는 검색 결과에서만 넘어온다. 둘러보기 목록은 검색이 아니라서 남길 기록이 없다
+function ProductCard({ card, onSelect }: { card: CatalogCard; onSelect?: () => void }) {
     const hasStats = card.lastTradedPrice !== undefined || card.openAuctionCount !== undefined;
     const openCount = card.openAuctionCount ?? 0;
 
     return (
         <Link
             to={`/products/${card.productId}`}
+            onClick={onSelect}
             className="rounded-xl border border-line bg-surface p-3 shadow-sm transition-[transform,border-color] duration-150 hover:-translate-y-0.5 hover:border-line-strong"
         >
             <div className="relative">
@@ -188,6 +190,10 @@ export function CatalogPage() {
         retry: 0,
     });
 
+    // 카드마다 만드는 클릭 핸들러가 searchId를 봐야 해서 상수로 뽑는다 — 옵셔널 체이닝으로 접근하면
+    // 콜백 안에서는 값이 있다는 판단이 유지되지 않는다
+    const searchResult = query.data;
+
     return (
         <div>
             <p className="text-[11px] font-bold uppercase tracking-widest text-brand">카탈로그</p>
@@ -245,9 +251,21 @@ export function CatalogPage() {
                         총 <b className="font-mono tabular-nums">{query.data?.totalElements}</b>건
                     </p>
                     <div className={`grid grid-cols-2 gap-3.5 md:grid-cols-4 ${query.isFetching ? "opacity-60" : ""}`}>
-                        {query.data?.content.map((card) => (
-                            <ProductCard key={card.productId} card={card} />
-                        ))}
+                        {searchResult &&
+                            searchResult.content.map((card, index) => (
+                                <ProductCard
+                                    key={card.productId}
+                                    card={card}
+                                    // 페이지를 넘어가도 이어 세야 원하는 것을 찾기까지 얼마나 내려갔는지 알 수 있다
+                                    onSelect={() =>
+                                        recordSearchClick(
+                                            searchResult.searchId,
+                                            card.productId,
+                                            page * PAGE_SIZE + index + 1,
+                                        )
+                                    }
+                                />
+                            ))}
                     </div>
                     {query.data && (
                         <Pagination
