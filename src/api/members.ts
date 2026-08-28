@@ -17,7 +17,9 @@ export function register(request: RegisterRequest): Promise<void> {
 }
 
 // member-service GET /api/v1/members/me — 응답은 MemberProfileDto(가입 때 쓰는 nickName과 달리 nickname)
+// id: accessToken이 httpOnly 쿠키가 되면서 프론트가 더 이상 JWT를 디코드해 memberId를 얻을 수 없어 추가된 필드
 export interface MemberProfile {
+    id: number;
     email: string;
     nickname: string;
 }

@@ -1,26 +1,14 @@
-// 로그인 세션 보관 — JWT의 subject가 memberId라서 디코드해 화면 표시용으로 쓴다.
-// (회원 식별은 게이트웨이가 토큰을 검증해 X-Member-Id 헤더로 서비스에 전달한다)
+// 로그인 세션 보관 — AT/RT 모두 httpOnly 쿠키로 오가므로 토큰 값 자체는 프론트가 들고 있지 않는다.
+// 로그인 직후 /api/v1/members/me를 조회해 얻은 memberId/닉네임만 화면 표시·식별용으로 저장한다.
+// (회원 식별은 게이트웨이가 accessToken 쿠키를 검증해 X-Member-Id 헤더로 서비스에 전달한다)
 
 import { useSyncExternalStore } from "react";
 
 const STORAGE_KEY = "groove_session";
 
 export interface Session {
-    token: string;
     memberId: number;
     displayName: string;
-}
-
-export function decodeMemberId(token: string): number | null {
-    const payload = token.split(".")[1];
-    if (!payload) return null;
-    try {
-        const json = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
-        const id = Number(json.sub);
-        return Number.isFinite(id) ? id : null;
-    } catch {
-        return null;
-    }
 }
 
 // 세션이 바뀌면(로그인·로그아웃·갱신 실패로 삭제) 구독 중인 화면에 알린다 —
@@ -54,7 +42,7 @@ export function loadSession(): Session | null {
     if (!raw) return null;
     try {
         const parsed = JSON.parse(raw) as Session;
-        if (!parsed.token || !Number.isFinite(parsed.memberId)) return null;
+        if (!Number.isFinite(parsed.memberId) || !parsed.displayName) return null;
         cached = parsed;
         return parsed;
     } catch {
