@@ -41,7 +41,6 @@ export function ParticipatedAuctionsTab() {
 
     return (
         <div>
-            <h3 className="mb-1 text-base font-bold tracking-tight">참여한 경매</h3>
             <p className="mb-4 text-[13.5px] text-muted">
                 입찰한 적 있는 경매입니다. 경매당 내 마지막 입찰 한 건씩 보여줍니다.
             </p>

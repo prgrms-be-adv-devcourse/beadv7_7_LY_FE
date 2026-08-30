@@ -19,7 +19,6 @@ export function LikedProductsTab() {
 
     return (
         <div>
-            <h3 className="mb-1 text-base font-bold tracking-tight">찜한 상품</h3>
             <p className="mb-4 text-[13.5px] text-muted">
                 카탈로그에서 하트를 누른 음반입니다. 하트를 다시 누르면 목록에서 빠집니다.
             </p>

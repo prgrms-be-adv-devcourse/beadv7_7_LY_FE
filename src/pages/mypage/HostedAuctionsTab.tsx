@@ -48,7 +48,6 @@ export function HostedAuctionsTab() {
         <div>
             <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
                 <div>
-                    <h3 className="mb-1 text-base font-bold tracking-tight">내가 등록한 경매</h3>
                     <p className="text-[13.5px] text-muted">
                         판매자로 올린 경매입니다. 시작 {AUCTION_POLICY.EDIT_DEADLINE_MINUTES}분 전까지만 고치거나
                         취소할 수 있고, 취소한 경매는 목록에서 빠집니다.

@@ -30,7 +30,6 @@ export function WatchedAuctionsTab() {
 
     return (
         <div>
-            <h3 className="mb-1 text-base font-bold tracking-tight">관심 경매</h3>
             <p className="mb-4 text-[13.5px] text-muted">
                 별을 눌러 담아둔 경매입니다. 진행 상태별로 묶어 보여주며, 최대 {MAX_WATCHED_AUCTIONS}건까지 담을 수
                 있습니다.
