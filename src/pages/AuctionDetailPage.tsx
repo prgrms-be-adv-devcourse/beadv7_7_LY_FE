@@ -547,9 +547,10 @@ export function AuctionDetailPage() {
                             )}
 
                             <div className="mt-6 grid items-start gap-5 md:grid-cols-2">
+                                {/* 시세 카드가 기록 없음으로 빠지면 유일한 자식이 되므로 전폭으로 편다 */}
                                 <section
                                     id="bidlog"
-                                    className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm"
+                                    className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm md:only:col-span-2"
                                 >
                                     <div className="flex items-center justify-between border-b border-line px-5 py-4">
                                         <h3 className="text-[15px] font-bold">호가 로그</h3>

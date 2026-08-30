@@ -225,8 +225,11 @@ export interface ParticipatedAuction {
     productId: number;
     title: string;
     artistName: string;
+    thumbnail: string | null;
     status: AuctionStatus;
     myBidAmount: number;
+    // 현재 최고가 — 내 입찰과 나란히 보여 "얼마나 밀렸는지"를 알려준다
+    highestBidAmount: number | null;
     myOutcome: BidOutcome;
 }
 
