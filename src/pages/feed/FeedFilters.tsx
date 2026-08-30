@@ -3,25 +3,18 @@ import { GENRES } from "../../api/products";
 export interface FeedFilterValues {
     genre: string;
     pressType: string;
-    status: string;
+    includeEnded: boolean;
     sort: string;
 }
 
 interface FeedFiltersProps {
     values: FeedFilterValues;
-    onChange: (patch: Partial<Record<"genre" | "pressType" | "status" | "sort", string | null>>) => void;
+    onChange: (patch: Partial<Record<"genre" | "pressType" | "ended" | "sort", string | null>>) => void;
 }
 
 const PRESS_TYPES = [
     { value: "ORIGINAL", label: "오리지널" },
     { value: "REISSUE", label: "재발매" },
-];
-
-// 종료된 경매(낙찰·유찰)는 피드에 내놓지 않는다 — 시간이 지날수록 죽은 매물이 목록을 지배하게 되고,
-// 낙찰가 확인은 상품 상세의 시세가, 내 경매 결과는 마이페이지가 담당한다
-const STATUSES = [
-    { value: "RUNNING", label: "진행 중" },
-    { value: "SCHEDULED", label: "시작 전" },
 ];
 
 const SORTS = [
@@ -33,7 +26,7 @@ const SORTS = [
 
 export function FeedFilters({ values, onChange }: FeedFiltersProps) {
     return (
-        <div className="mb-5 flex flex-wrap items-center gap-2.5">
+        <div className="mb-6 flex flex-wrap items-center gap-2.5 border-y border-line py-3">
             <select
                 value={values.genre}
                 onChange={(e) => onChange({ genre: e.target.value || null })}
@@ -48,7 +41,6 @@ export function FeedFilters({ values, onChange }: FeedFiltersProps) {
                 ))}
             </select>
             <span className="h-5 w-px bg-line" />
-            <span className="text-[11px] font-bold uppercase tracking-wider text-faint">프레스</span>
             {PRESS_TYPES.map((p) => (
                 <button
                     key={p.value}
@@ -65,26 +57,16 @@ export function FeedFilters({ values, onChange }: FeedFiltersProps) {
                 </button>
             ))}
             <span className="h-5 w-px bg-line" />
-            <div role="radiogroup" aria-label="상태 필터" className="inline-flex rounded-lg border border-line bg-surface p-0.5">
-                {STATUSES.map((s) => {
-                    const selected = values.status === s.value;
-                    return (
-                        <button
-                            key={s.value}
-                            type="button"
-                            role="radio"
-                            aria-checked={selected}
-                            // 진행 중은 기본값이라 URL에서 status를 지운다 — 필터 없는 기존 공유 링크와 같은 형태 유지
-                            onClick={() => onChange({ status: s.value === "RUNNING" ? null : s.value })}
-                            className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
-                                selected ? "bg-brand text-white" : "text-muted hover:text-ink"
-                            }`}
-                        >
-                            {s.label}
-                        </button>
-                    );
-                })}
-            </div>
+            {/* 종료 경매는 기본에서 빼되, 켜면 낙찰가가 시세 참고가 된다 — 진행 중이 적을 때 피드가 비는 것도 막는다 */}
+            <label className="flex cursor-pointer items-center gap-1.5 text-[12.5px] font-bold text-muted">
+                <input
+                    type="checkbox"
+                    checked={values.includeEnded}
+                    onChange={(e) => onChange({ ended: e.target.checked ? "1" : null })}
+                    className="h-4 w-4 accent-[var(--color-brand)]"
+                />
+                종료된 경매 포함
+            </label>
             <select
                 value={values.sort}
                 onChange={(e) => onChange({ sort: e.target.value })}

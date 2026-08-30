@@ -1,4 +1,4 @@
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { fetchAuctions, type AuctionSort } from "../api/auctions";
 import { AuctionCard } from "../components/AuctionCard";
@@ -6,15 +6,16 @@ import { QueryState } from "../components/QueryState";
 import { Pagination } from "../components/Pagination";
 import { FeedFilters } from "./feed/FeedFilters";
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 15;
 const VALID_SORTS: AuctionSort[] = ["ending_soon", "price_asc", "price_desc", "most_bids"];
 
 export function FeedPage() {
     const [searchParams, setSearchParams] = useSearchParams();
     const genre = searchParams.get("genre") ?? "";
     const pressType = searchParams.get("pressType") ?? "";
-    // 피드는 진행 중이 기본. "시작 전" 외의 값(종료 상태를 담은 옛 링크 등)은 전부 기본으로 되돌린다
-    const status = searchParams.get("status") === "SCHEDULED" ? "SCHEDULED" : "RUNNING";
+    // 기본은 진행 중만. "종료 포함"을 켜면 상태 필터를 풀어 전체(진행·예정·종료)를 본다 —
+    // 목록 API가 상태를 하나만 받아서, 포함 토글은 필터 해제로 구현한다
+    const includeEnded = searchParams.get("ended") === "1";
     const sortParam = searchParams.get("sort");
     const sort = VALID_SORTS.includes(sortParam as AuctionSort) ? (sortParam as AuctionSort) : "ending_soon";
     const page = Math.max(0, Number(searchParams.get("page") ?? "0") || 0);
@@ -31,12 +32,12 @@ export function FeedPage() {
     }
 
     const query = useQuery({
-        queryKey: ["auctions", "feed", genre, pressType, status, sort, page],
+        queryKey: ["auctions", "feed", genre, pressType, includeEnded, sort, page],
         queryFn: () =>
             fetchAuctions({
                 genre: genre || undefined,
                 pressType: pressType || undefined,
-                status,
+                status: includeEnded ? undefined : "RUNNING",
                 sort,
                 page,
                 size: PAGE_SIZE,
@@ -46,10 +47,19 @@ export function FeedPage() {
 
     return (
         <div>
-            <p className="text-[11px] font-bold uppercase tracking-widest text-live">둘러보기</p>
-            <h2 className="text-lg font-bold tracking-tight">경매 피드</h2>
-            <p className="mb-4 mt-1 text-[13.5px] text-muted">등록된 경매를 장르·프레스·상태로 골라보세요.</p>
-            <FeedFilters values={{ genre, pressType, status, sort }} onChange={patchParams} />
+            <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                    <h2 className="font-display text-3xl font-bold tracking-tight">경매 피드</h2>
+                    <p className="mt-1.5 text-[13.5px] text-muted">진행 중인 경매를 마감 순서로 봅니다.</p>
+                </div>
+                <Link
+                    to="/auctions/new"
+                    className="rounded-xl bg-ink px-5 py-2.5 text-[13.5px] font-extrabold text-paper transition-opacity hover:opacity-90"
+                >
+                    + 경매 등록하기
+                </Link>
+            </div>
+            <FeedFilters values={{ genre, pressType, includeEnded, sort }} onChange={patchParams} />
             <QueryState
                 isLoading={query.isPending}
                 error={query.error}
@@ -58,7 +68,16 @@ export function FeedPage() {
                 emptyMessage={
                     <div>
                         조건에 맞는 경매가 없습니다.
-                        <div className="mt-3">
+                        <div className="mt-3 flex justify-center gap-2">
+                            {!includeEnded && (
+                                <button
+                                    type="button"
+                                    onClick={() => patchParams({ ended: "1" })}
+                                    className="rounded-lg border border-line bg-paper px-4 py-2 text-sm font-semibold hover:border-line-strong"
+                                >
+                                    종료된 경매 포함해 보기
+                                </button>
+                            )}
                             <button
                                 type="button"
                                 onClick={() => setSearchParams({}, { replace: true })}
@@ -70,10 +89,11 @@ export function FeedPage() {
                     </div>
                 }
             >
-                <p className="mb-3 text-[13px] text-muted">
-                    총 <b className="font-mono tabular-nums">{query.data?.totalElements}</b>건
-                </p>
-                <div className={`grid grid-cols-2 gap-3.5 md:grid-cols-4 ${query.isFetching ? "opacity-60" : ""}`}>
+                <div
+                    className={`grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-5 ${
+                        query.isFetching ? "opacity-60" : ""
+                    }`}
+                >
                     {query.data?.items.map((auction) => (
                         <AuctionCard key={auction.auctionId} auction={auction} />
                     ))}

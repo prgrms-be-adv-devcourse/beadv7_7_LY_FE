@@ -33,7 +33,10 @@ export interface AuctionListItem {
     sellerId: number;
     sellerNickname: string;
     status: AuctionStatus;
+    itemCondition: string | null;
     finalPrice: number;
+    // 등록 때 입력한 시작가(배송비 제외). 카드 가격은 입찰가 축(finalPrice)을 쓰고 이 값은 상세용
+    startPrice: number | null;
     bidCount: number;
     startAt: string;
     endAt: string;
@@ -59,6 +62,7 @@ export type AuctionStatus =
 export type AuctionSort = "ending_soon" | "price_asc" | "price_desc" | "most_bids";
 
 export interface AuctionListParams {
+    sellerId?: number;
     productId?: number;
     genre?: string;
     pressType?: string;
@@ -70,6 +74,7 @@ export interface AuctionListParams {
 
 export function fetchAuctions(params: AuctionListParams): Promise<AuctionPage> {
     const query = new URLSearchParams();
+    if (params.sellerId !== undefined) query.set("sellerId", String(params.sellerId));
     if (params.productId !== undefined) query.set("productId", String(params.productId));
     if (params.genre) query.set("genre", params.genre);
     if (params.pressType) query.set("pressType", params.pressType);
