@@ -111,7 +111,7 @@ export function Layout() {
                             >
                                 로그인
                             </Link>
-                            <Link to="/signup" className="rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-ink">
+                            <Link to="/signup" className="rounded-lg bg-ink px-3 py-1.5 text-sm font-semibold text-paper hover:opacity-90">
                                 회원가입
                             </Link>
                         </div>
