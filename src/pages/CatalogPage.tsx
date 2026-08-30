@@ -13,12 +13,12 @@ const PAGE_SIZE = 20;
 
 function SkeletonGrid() {
     return (
-        <div className="grid grid-cols-2 gap-3.5 md:grid-cols-4">
-            {Array.from({ length: 8 }, (_, i) => (
-                <div key={i} className="animate-pulse rounded-xl border border-line bg-surface p-3">
-                    <div className="aspect-square rounded-md bg-surface2" />
-                    <div className="mt-3 h-4 w-3/4 rounded bg-surface2" />
-                    <div className="mt-2 h-3 w-1/2 rounded bg-surface2" />
+        <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-5">
+            {Array.from({ length: 10 }, (_, i) => (
+                <div key={i} className="animate-pulse">
+                    <div className="aspect-square rounded-xl bg-surface2" />
+                    <div className="mt-2.5 h-3.5 w-3/4 rounded bg-surface2" />
+                    <div className="mt-1.5 h-3 w-1/2 rounded bg-surface2" />
                 </div>
             ))}
         </div>
@@ -39,57 +39,41 @@ interface CatalogCard {
     openAuctionCount?: number | null;
 }
 
-// onSelect는 검색 결과에서만 넘어온다. 둘러보기 목록은 검색이 아니라서 남길 기록이 없다
+// onSelect는 검색 결과에서만 넘어온다. 둘러보기 목록은 검색이 아니라서 남길 기록이 없다.
+// 값이 없는 정보는 "없음" 문구 대신 표기 자체를 접는다 — 경매는 있을 때만 커버 위 배지,
+// 시세는 없으면 작은 한 줄로만
 function ProductCard({ card, onSelect }: { card: CatalogCard; onSelect?: () => void }) {
     const hasStats = card.lastTradedPrice !== undefined || card.openAuctionCount !== undefined;
     const openCount = card.openAuctionCount ?? 0;
 
     return (
-        <Link
-            to={`/products/${card.productId}`}
-            onClick={onSelect}
-            className="rounded-xl border border-line bg-surface p-3 shadow-sm transition-[transform,border-color] duration-150 hover:-translate-y-0.5 hover:border-line-strong"
-        >
-            <div className="relative">
+        <Link to={`/products/${card.productId}`} onClick={onSelect} className="group min-w-0">
+            <div className="relative overflow-hidden rounded-xl shadow-[0_2px_10px_rgba(35,36,31,0.09)] transition-transform duration-200 group-hover:-translate-y-1">
                 <VinylCover title={card.title} artist={card.artistName} imageUrl={card.coverImageUrl} />
-                <LikeButton productId={card.productId} />
-            </div>
-            <div className="mt-2.5 truncate font-display text-sm font-bold">{card.title}</div>
-            <div className="truncate text-xs text-muted">{card.artistName}</div>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-                <span className="rounded bg-surface2 px-1.5 py-0.5 text-[10.5px] font-semibold text-muted">
-                    {card.releaseYear}
-                </span>
-                <span className="rounded bg-surface2 px-1.5 py-0.5 text-[10.5px] font-semibold text-muted">
-                    {card.pressType === "ORIGINAL" ? "오리지널" : "재발매"}
-                </span>
-                {card.country && (
-                    <span className="rounded bg-surface2 px-1.5 py-0.5 text-[10.5px] font-semibold text-muted">
-                        {card.country}
+                {openCount > 0 && (
+                    <span className="absolute left-2 top-2 z-[2] rounded-full bg-live px-2 py-0.5 text-[10.5px] font-extrabold text-white">
+                        경매 {openCount}건
                     </span>
                 )}
+                <LikeButton productId={card.productId} />
             </div>
-            {hasStats && (
-                <div className="mt-2.5 flex items-end justify-between border-t border-line pt-2.5">
-                    <div>
-                        <div className="text-[10px] font-semibold uppercase tracking-wider text-faint">최근 낙찰가</div>
-                        {card.lastTradedPrice !== null && card.lastTradedPrice !== undefined ? (
-                            <div className="font-mono text-sm font-bold tabular-nums text-up">
-                                {formatWon(card.lastTradedPrice)}
-                            </div>
-                        ) : (
-                            <div className="text-[13px] font-semibold text-faint">거래 없음</div>
-                        )}
-                    </div>
-                    <span
-                        className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                            openCount > 0 ? "bg-live-bg text-live" : "bg-surface2 text-faint"
-                        }`}
-                    >
-                        {openCount > 0 ? `${openCount}건 경매중` : "경매 없음"}
-                    </span>
-                </div>
-            )}
+            <p className="mt-2 truncate text-[13.5px] font-bold">{card.title}</p>
+            <p className="truncate text-[12px] font-semibold text-muted">{card.artistName}</p>
+            <p className="mt-0.5 truncate text-[11px] font-semibold text-faint">
+                {card.releaseYear} · {card.pressType === "ORIGINAL" ? "오리지널" : "재발매"}
+                {card.country ? ` · ${card.country}` : ""}
+            </p>
+            {hasStats &&
+                (card.lastTradedPrice !== null && card.lastTradedPrice !== undefined ? (
+                    <p className="mt-1.5 flex items-baseline gap-1.5">
+                        <b className="font-mono text-[14.5px] font-bold tabular-nums text-up">
+                            {formatWon(card.lastTradedPrice)}
+                        </b>
+                        <small className="text-[10.5px] font-bold text-faint">최근 낙찰</small>
+                    </p>
+                ) : (
+                    <p className="mt-1.5 text-[11px] font-semibold text-faint">시세 기록 없음</p>
+                ))}
         </Link>
     );
 }
@@ -108,10 +92,7 @@ function BrowseList({ page, onPage }: { page: number; onPage: (page: number) => 
             emptyMessage="등록된 음반이 아직 없습니다."
             loadingFallback={<SkeletonGrid />}
         >
-            <p className="mb-3 text-[13px] text-muted">
-                등록된 음반 <b className="font-mono tabular-nums">{query.data?.totalElements}</b>건
-            </p>
-            <div className={`grid grid-cols-2 gap-3.5 md:grid-cols-4 ${query.isFetching ? "opacity-60" : ""}`}>
+            <div className={`grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-5 ${query.isFetching ? "opacity-60" : ""}`}>
                 {query.data?.content.map((card) => (
                     <ProductCard key={card.productId} card={card} />
                 ))}
@@ -196,12 +177,11 @@ export function CatalogPage() {
 
     return (
         <div>
-            <p className="text-[11px] font-bold uppercase tracking-widest text-brand">카탈로그</p>
-            <h2 className="text-lg font-bold tracking-tight">음반 검색</h2>
-            <p className="mb-4 mt-1 text-[13.5px] text-muted">
+            <h2 className="font-display text-3xl font-bold tracking-tight">음반 카탈로그</h2>
+            <p className="mb-4 mt-1.5 text-[13.5px] text-muted">
                 음반(앨범) 단위로 탐색합니다 — 검색어가 없으면 등록된 음반을 둘러봅니다.
             </p>
-            <form onSubmit={submitSearch} className="mb-5 max-w-[520px]">
+            <form onSubmit={submitSearch} className="mb-6 max-w-[640px]">
                 <div className="mb-2">
                     <SearchByToggle value={searchBy} onChange={changeSearchBy} />
                 </div>
@@ -250,7 +230,7 @@ export function CatalogPage() {
                     <p className="mb-3 text-[13px] text-muted">
                         총 <b className="font-mono tabular-nums">{query.data?.totalElements}</b>건
                     </p>
-                    <div className={`grid grid-cols-2 gap-3.5 md:grid-cols-4 ${query.isFetching ? "opacity-60" : ""}`}>
+                    <div className={`grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-5 ${query.isFetching ? "opacity-60" : ""}`}>
                         {searchResult &&
                             searchResult.content.map((card, index) => (
                                 <ProductCard
