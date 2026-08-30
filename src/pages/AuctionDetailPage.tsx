@@ -1,19 +1,29 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { formatCondition, getAuctionDetail, parseServerTime, placeBid, type AuctionDetail } from "../api/auctions";
+import {
+    fetchAuctions,
+    formatCondition,
+    getAuctionDetail,
+    parseServerTime,
+    placeBid,
+    type AuctionDetail,
+} from "../api/auctions";
 import { ApiError } from "../api/client";
 import { getMyProfile } from "../api/members";
+import { getPriceTrades } from "../api/products";
 import { Countdown, useNow } from "../components/Countdown";
 import { useSession } from "../auth/session";
 import { VinylCover } from "../components/VinylCover";
 import { QueryState } from "../components/QueryState";
 import { WatchButton } from "../components/WatchButton";
-import { formatWon } from "../components/AuctionCard";
+import { AuctionCard, formatWon } from "../components/AuctionCard";
 import { showToast } from "../components/Toasts";
+import { formatAgo } from "../lib/format";
 import { VuCountdown } from "./auction-detail/VuCountdown";
 import { BidLog } from "./auction-detail/BidLog";
 import { PriceSummaryBlock } from "./auction-detail/PriceSummaryBlock";
+import { PriceSparkline } from "./product-detail/PriceSparkline";
 
 const STATUS_LABELS: Record<string, string> = {
     SCHEDULED: "시작 전",
@@ -30,6 +40,7 @@ function BidBox({ auction }: { auction: AuctionDetail }) {
     const location = useLocation();
     const queryClient = useQueryClient();
     const [bidError, setBidError] = useState<string | null>(null);
+    const [snapNote, setSnapNote] = useState<string | null>(null);
     const session = useSession();
 
     const currentPrice = auction.highestBidAmount ?? auction.startBidAmount;
@@ -51,6 +62,7 @@ function BidBox({ auction }: { auction: AuctionDetail }) {
             setBidError(null);
             // 입찰 후에는 새 최소 입찰가부터 다시 시작한다
             setAmountInput(null);
+            setSnapNote(null);
             queryClient.invalidateQueries({ queryKey: ["auction", String(auction.auctionId)] });
             // 실패만 알리고 성공은 조용하던 비대칭을 메운다 — 핵심 액션엔 성공 확인이 필요
             showToast(`${formatWon(amount)} 입찰 완료 — 현재 최고 입찰자입니다`);
@@ -67,6 +79,7 @@ function BidBox({ auction }: { auction: AuctionDetail }) {
     // 단위에 맞는 값으로 떨어지게 맞춰준다 (올릴 땐 위쪽, 내릴 땐 아래쪽 값으로)
     function stepBid(direction: 1 | -1) {
         if (ended) return;
+        setSnapNote(null);
         // 비었거나 최소 미만이면 어느 방향이든 최소 입찰가로 되돌린다
         if (!Number.isFinite(bidAmount) || bidAmount < nextBid) {
             setAmountInput(String(nextBid));
@@ -75,6 +88,30 @@ function BidBox({ auction }: { auction: AuctionDetail }) {
         const steps = (bidAmount - nextBid) / auction.bidUnit;
         const nextSteps = direction > 0 ? Math.floor(steps) + 1 : Math.ceil(steps) - 1;
         setAmountInput(String(nextBid + Math.max(0, nextSteps) * auction.bidUnit));
+    }
+
+    // 직접 입력한 값이 입찰 단위에 맞지 않으면 아래 방향으로 자동 보정한다 (팀 확정 동작).
+    // 제출 시 검증은 남겨둔다 — 보정 직후 최소가가 올라간 경우의 이중 안전장치
+    function snapOnBlur() {
+        if (amountInput === null || ended) return;
+        const entered = Number(amountInput);
+        if (!Number.isFinite(entered) || amountInput.trim() === "") {
+            setAmountInput(null);
+            setSnapNote(null);
+            return;
+        }
+        if (entered <= nextBid) {
+            setAmountInput(null);
+            setSnapNote(entered < nextBid ? `최소 입찰가는 ${formatWon(nextBid)}입니다.` : null);
+            return;
+        }
+        const fitted = nextBid + Math.floor((entered - nextBid) / auction.bidUnit) * auction.bidUnit;
+        if (fitted !== entered) {
+            setAmountInput(String(fitted));
+            setSnapNote(`입찰 단위 ${formatWon(auction.bidUnit)}에 맞춰 ${formatWon(fitted)}(으)로 조정했습니다.`);
+        } else {
+            setSnapNote(null);
+        }
     }
 
     function submitBid() {
@@ -95,33 +132,57 @@ function BidBox({ auction }: { auction: AuctionDetail }) {
     }
 
     return (
-        <aside className="rounded-2xl border-[1.5px] border-line-strong bg-surface p-5 shadow-sm">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-faint">
-                현재가 · <span className="font-mono tabular-nums">{auction.bidCount ?? 0}</span>건 입찰
+        <aside className="rounded-2xl border border-line bg-surface p-5 shadow-[0_6px_24px_rgba(35,36,31,0.07)]">
+            <p className="text-[12px] font-bold text-muted">현재가</p>
+            <p className="mt-0.5 font-mono text-[32px] font-extrabold leading-tight tabular-nums tracking-tight">
+                {formatWon(currentPrice)}
             </p>
-            <p className="mt-1 font-mono text-3xl font-bold tabular-nums tracking-tight">{formatWon(currentPrice)}</p>
-            <p className="mt-1.5 text-xs text-muted">
-                시작가 {formatWon(auction.startBidAmount)} · 입찰 단위 {formatWon(auction.bidUnit)}
-            </p>
-            {auction.myHighest && <p className="mt-1.5 text-xs font-bold text-up">내가 최고 입찰자입니다</p>}
-            <PriceSummaryBlock
-                productId={auction.product.productId}
-                itemCondition={auction.itemCondition}
-                currentPrice={currentPrice}
-            />
+            {auction.myHighest && <p className="mt-1 text-xs font-bold text-up">내가 최고 입찰자입니다</p>}
             <VuCountdown startedAt={parseServerTime(auction.startAt)} endsAt={parseServerTime(auction.endAt)} />
+            {/* 입찰 판단 재료를 라벨-값 행으로 정돈한다. 기록 보기는 아래 호가 로그로 내려간다 */}
+            <div className="mt-4 overflow-hidden rounded-xl border border-line bg-paper text-[12.5px]">
+                {[
+                    [
+                        "입찰 기록",
+                        <span key="bids">
+                            <b className="font-mono font-bold tabular-nums">{auction.bidCount ?? 0}</b>회{" "}
+                            <a href="#bidlog" className="font-semibold text-brand underline">
+                                기록 보기
+                            </a>
+                        </span>,
+                    ],
+                    ["시작가", <b key="s" className="font-mono font-bold tabular-nums">{formatWon(auction.startPrice)}</b>],
+                    ["배송비", <b key="f" className="font-mono font-bold tabular-nums">{formatWon(auction.shippingPrice)}</b>],
+                    ["입찰 단위", <b key="u" className="font-mono font-bold tabular-nums">{formatWon(auction.bidUnit)}</b>],
+                    ...(auction.extensionEnabled && auction.extensionTime !== null
+                        ? [
+                              [
+                                  "자동 연장",
+                                  <span key="e" className="font-semibold">
+                                      마감 {auction.extensionTime}분 안 입찰 시 +{auction.extensionTime}분
+                                  </span>,
+                              ] as const,
+                          ]
+                        : []),
+                ].map(([label, value]) => (
+                    <div
+                        key={String(label)}
+                        className="flex items-baseline justify-between border-b border-line px-3.5 py-2 last:border-b-0"
+                    >
+                        <span className="font-medium text-muted">{label}</span>
+                        {value}
+                    </div>
+                ))}
+            </div>
             {session ? (
                 <div className="mt-4">
-                    <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-faint">
-                        입찰 금액
-                    </span>
                     <div className="flex items-stretch gap-1.5">
                         <button
                             type="button"
                             onClick={() => stepBid(-1)}
                             disabled={ended || bidAmount <= nextBid}
                             aria-label={`${formatWon(auction.bidUnit)} 내리기`}
-                            className="w-11 shrink-0 rounded-xl border border-line bg-paper text-lg font-bold text-muted transition-colors hover:border-line-strong hover:text-ink disabled:opacity-40"
+                            className="w-11 shrink-0 rounded-xl border border-line bg-surface text-lg font-bold text-muted transition-colors hover:border-line-strong hover:text-ink disabled:opacity-40"
                         >
                             −
                         </button>
@@ -134,29 +195,31 @@ function BidBox({ auction }: { auction: AuctionDetail }) {
                             disabled={ended}
                             aria-label="입찰 금액"
                             onChange={(e) => setAmountInput(e.target.value)}
+                            onBlur={snapOnBlur}
                             onKeyDown={(e) => {
-                                if (e.key === "Enter") submitBid();
+                                if (e.key === "Enter") {
+                                    snapOnBlur();
+                                    submitBid();
+                                }
                             }}
-                            className="min-w-0 grow rounded-xl border border-line bg-paper px-3 py-2 text-right font-mono text-[15px] font-bold tabular-nums outline-none focus:border-line-strong"
+                            className="min-w-0 grow rounded-xl border border-line-strong bg-surface px-3 py-2 text-center font-mono text-[15.5px] font-bold tabular-nums outline-none focus:border-brand"
                         />
                         <button
                             type="button"
                             onClick={() => stepBid(1)}
                             disabled={ended}
                             aria-label={`${formatWon(auction.bidUnit)} 올리기`}
-                            className="w-11 shrink-0 rounded-xl border border-line bg-paper text-lg font-bold text-muted transition-colors hover:border-line-strong hover:text-ink disabled:opacity-40"
+                            className="w-11 shrink-0 rounded-xl border border-line bg-surface text-lg font-bold text-muted transition-colors hover:border-line-strong hover:text-ink disabled:opacity-40"
                         >
                             +
                         </button>
                     </div>
-                    <p className="mt-1 text-[11.5px] text-faint">
-                        최소 {formatWon(nextBid)} · {formatWon(auction.bidUnit)} 단위로 올릴 수 있습니다
-                    </p>
+                    {snapNote && <p className="mt-1.5 text-[11.5px] font-bold leading-snug text-live break-keep">{snapNote}</p>}
                     <button
                         type="button"
                         onClick={submitBid}
                         disabled={bidMutation.isPending || ended}
-                        className="mt-2.5 w-full rounded-xl bg-live py-3.5 text-[15px] font-extrabold text-white transition-colors hover:bg-live/90 disabled:opacity-60"
+                        className="mt-2.5 w-full rounded-xl bg-brand py-3.5 text-[15px] font-extrabold text-white transition-colors hover:bg-brand-ink disabled:opacity-60"
                     >
                         {ended
                             ? "경매가 마감되었습니다"
@@ -166,6 +229,10 @@ function BidBox({ auction }: { auction: AuctionDetail }) {
                                 ? `${formatWon(bidAmount)} 입찰하기`
                                 : "입찰하기"}
                     </button>
+                    <p className="mt-3 text-center text-[11.5px] leading-relaxed text-faint break-keep">
+                        입찰 금액에는 배송비가 포함되어 있습니다. 예치금으로 결제되고, 구매를 확정한 뒤에
+                        판매자에게 정산됩니다.
+                    </p>
                 </div>
             ) : (
                 <button
@@ -178,13 +245,18 @@ function BidBox({ auction }: { auction: AuctionDetail }) {
                 </button>
             )}
             {bidError && <p className="mt-2.5 text-center text-[12px] font-semibold text-live">{bidError}</p>}
+            <PriceSummaryBlock
+                productId={auction.product.productId}
+                itemCondition={auction.itemCondition}
+                currentPrice={currentPrice}
+            />
         </aside>
     );
 }
 
 function ScheduledBox({ auction }: { auction: AuctionDetail }) {
     return (
-        <aside className="rounded-2xl border-[1.5px] border-line-strong bg-surface p-5 shadow-sm">
+        <aside className="rounded-2xl border border-line bg-surface p-5 shadow-[0_6px_24px_rgba(35,36,31,0.07)]">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-faint">경매 예정</p>
             <p className="mt-1 text-xl font-bold">시작 전</p>
             <p className="mt-2 text-sm text-muted">
@@ -210,7 +282,7 @@ function EndedBox({ auction }: { auction: AuctionDetail }) {
     const isWinner = auction.winningBid != null && profile.data?.nickname === auction.winningBid.bidder;
 
     return (
-        <aside className="rounded-2xl border-[1.5px] border-line-strong bg-surface p-5 shadow-sm">
+        <aside className="rounded-2xl border border-line bg-surface p-5 shadow-[0_6px_24px_rgba(35,36,31,0.07)]">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-faint">경매 결과</p>
             <p className="mt-1 text-xl font-bold">{STATUS_LABELS[auction.status] ?? auction.status}</p>
             {auction.winningBid && (
@@ -247,53 +319,39 @@ function EndedBox({ auction }: { auction: AuctionDetail }) {
     );
 }
 
-// 판매자가 올린 이 판의 사진과 설명. 위쪽 커버는 음반 자체의 대표 이미지라
-// "내가 파는 판이 어떤 상태인가"는 알려주지 않는다 — 사는 사람이 실제로 보고 판단하는 곳이다
-function ItemNotes({ description, images }: { description: string | null; images: string[] | null }) {
-    const photos = images ?? [];
+// 커버 열 — 위는 음반 대표 커버, 아래는 판매자가 올린 매물 사진 썸네일 줄.
+// 사진이 없으면 줄 자체를 그리지 않는다 ("올라온 사진이 없습니다" 같은 빈 문구를 만들지 않는다)
+function CoverColumn({ auction }: { auction: AuctionDetail }) {
+    const photos = auction.itemImages ?? [];
     const [zoomed, setZoomed] = useState<string | null>(null);
 
     return (
-        <section className="mt-7 overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
-            <div className="flex items-center justify-between border-b border-line px-5 py-4">
-                <h3 className="text-[15px] font-bold">판매자가 올린 매물 정보</h3>
-                {photos.length > 0 && (
-                    <span className="text-xs text-muted">
-                        사진 <span className="font-mono tabular-nums">{photos.length}</span>장
-                    </span>
-                )}
+        <div>
+            <VinylCover
+                title={auction.product.title}
+                artist={auction.product.artistName}
+                imageUrl={auction.product.coverImageUrl}
+                spin={auction.status === "RUNNING"}
+                className="rounded-xl shadow"
+            />
+            {photos.length > 0 && (
+                <div className="mt-2.5 grid grid-cols-4 gap-2">
+                    {photos.map((photo, index) => (
+                        <button
+                            key={`${index}-${photo.slice(0, 32)}`}
+                            type="button"
+                            onClick={() => setZoomed(photo)}
+                            aria-label={`매물 사진 ${index + 1} 크게 보기`}
+                            className="overflow-hidden rounded-lg border border-line transition-colors hover:border-line-strong"
+                        >
+                            <img src={photo} alt={`매물 사진 ${index + 1}`} loading="lazy" className="aspect-square w-full object-cover" />
+                        </button>
+                    ))}
+                </div>
+            )}
+            <div className="mt-3">
+                <WatchButton auctionId={auction.auctionId} status={auction.status} variant="inline" />
             </div>
-            <div className="px-5 py-4">
-                {photos.length > 0 && (
-                    <div className="mb-4 flex flex-wrap gap-2.5">
-                        {photos.map((photo, index) => (
-                            <button
-                                key={`${index}-${photo.slice(0, 32)}`}
-                                type="button"
-                                onClick={() => setZoomed(photo)}
-                                className="overflow-hidden rounded-lg border border-line transition-colors hover:border-line-strong"
-                            >
-                                <img
-                                    src={photo}
-                                    alt={`매물 사진 ${index + 1}`}
-                                    loading="lazy"
-                                    className="h-32 w-32 object-cover"
-                                />
-                            </button>
-                        ))}
-                    </div>
-                )}
-                {description ? (
-                    // 판매자가 넣은 줄바꿈을 그대로 살린다
-                    <p className="max-w-[70ch] whitespace-pre-line text-[14px] leading-relaxed">{description}</p>
-                ) : (
-                    <p className="text-[13.5px] text-muted">판매자가 남긴 설명이 없습니다.</p>
-                )}
-                {photos.length === 0 && (
-                    <p className="mt-2 text-[13.5px] text-muted">올라온 매물 사진이 없습니다.</p>
-                )}
-            </div>
-
             {zoomed && (
                 <div
                     role="presentation"
@@ -303,6 +361,46 @@ function ItemNotes({ description, images }: { description: string | null; images
                     <img src={zoomed} alt="매물 사진 크게 보기" className="max-h-full max-w-full rounded-lg" />
                 </div>
             )}
+        </div>
+    );
+}
+
+// 이 판의 낙찰 시세 — 상품 상세와 같은 원장 데이터. 기록이 없으면 카드를 그리지 않는다
+function TradesCard({ productId }: { productId: number }) {
+    const trades = useQuery({
+        queryKey: ["priceTrades", String(productId)],
+        queryFn: () => getPriceTrades(productId),
+        staleTime: 60_000,
+    });
+    const items = trades.data?.trades ?? [];
+    if (items.length === 0) return null;
+
+    const recent = [...items].sort((a, b) => b.tradedAt.localeCompare(a.tradedAt)).slice(0, 5);
+    return (
+        <section className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
+            <div className="flex items-center justify-between border-b border-line px-5 py-4">
+                <h3 className="text-[15px] font-bold">이 판의 낙찰 시세</h3>
+                <Link to={`/products/${productId}`} className="text-xs font-semibold text-muted hover:text-ink">
+                    상품 상세에서 자세히 →
+                </Link>
+            </div>
+            <div className="px-5 pb-2 pt-4">
+                <PriceSparkline trades={items} conditions={null} />
+            </div>
+            <div className="px-5 pb-3">
+                {recent.map((trade, i) => (
+                    <div
+                        key={`${trade.tradedAt}-${i}`}
+                        className="grid grid-cols-[1fr_auto_auto] items-center gap-4 border-b border-line py-2 last:border-b-0"
+                    >
+                        <span className="text-[12.5px] font-semibold text-muted">
+                            {formatCondition(trade.condition).split(" ")[0]}
+                        </span>
+                        <span className="font-mono text-sm font-bold tabular-nums">{formatWon(trade.price)}</span>
+                        <span className="min-w-[62px] text-right text-[11.5px] text-faint">{formatAgo(trade.tradedAt)}</span>
+                    </div>
+                ))}
+            </div>
         </section>
     );
 }
@@ -326,6 +424,17 @@ export function AuctionDetailPage() {
     });
 
     const auction = auctionQuery.data;
+
+    // 판매자 블록과 "다른 매물" 레일이 같이 쓰는 조회 — totalElements가 판매 건수다
+    const sellerId = auction?.seller.sellerId;
+    const sellerAuctions = useQuery({
+        queryKey: ["auctions", "seller", sellerId],
+        queryFn: () => fetchAuctions({ sellerId: sellerId!, page: 0, size: 7 }),
+        enabled: sellerId != null,
+        staleTime: 60_000,
+    });
+    const otherAuctions =
+        sellerAuctions.data?.items.filter((item) => String(item.auctionId) !== auctionId).slice(0, 6) ?? [];
 
     return (
         <QueryState
@@ -351,44 +460,39 @@ export function AuctionDetailPage() {
                     </Link>
                     <div className="grid items-start gap-7 md:grid-cols-[1fr_380px]">
                         <div>
-                            <div className="grid items-start gap-6 sm:grid-cols-[220px_1fr]">
+                            <div className="grid items-start gap-6 sm:grid-cols-[240px_1fr]">
+                                <CoverColumn auction={auction} />
                                 <div>
-                                    <VinylCover
-                                        title={auction.product.title}
-                                        artist={auction.product.artistName}
-                                        imageUrl={auction.product.coverImageUrl}
-                                        spin={auction.status === "RUNNING"}
-                                        className="rounded-xl shadow"
-                                    />
-                                    <div className="mt-3">
-                                        <WatchButton
-                                            auctionId={auction.auctionId}
-                                            status={auction.status}
-                                            variant="inline"
-                                        />
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                        <span
+                                            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-extrabold ${
+                                                auction.status === "RUNNING"
+                                                    ? "bg-live-bg text-live"
+                                                    : "bg-surface2 text-muted"
+                                            }`}
+                                        >
+                                            {auction.status === "RUNNING" && (
+                                                <i className="h-[7px] w-[7px] animate-[live-pulse_1.6s_infinite] rounded-full bg-live motion-reduce:animate-none" />
+                                            )}
+                                            {STATUS_LABELS[auction.status] ?? auction.status}
+                                        </span>
+                                        {auction.extensionEnabled && auction.extensionTime !== null && (
+                                            <span className="rounded-full bg-surface2 px-3 py-1 text-[12px] font-extrabold text-muted">
+                                                자동 연장 경매
+                                            </span>
+                                        )}
                                     </div>
-                                </div>
-                                <div>
-                                    <h1 className="font-display text-2xl font-semibold leading-tight tracking-tight text-balance">
+                                    <h1 className="mt-3 font-display text-[30px] font-bold leading-tight tracking-tight text-balance break-keep">
                                         <Link to={`/products/${auction.product.productId}`} className="hover:underline">
                                             {auction.product.title}
                                         </Link>
                                     </h1>
                                     <p className="mt-1 text-base font-bold text-brand">{auction.product.artistName}</p>
-                                    {auction.extensionEnabled && auction.extensionTime !== null && (
-                                        // 마감 직전에 넣으면 끝나는 줄 알고 있다가 시간이 늘어난다 — 미리 알려준다
-                                        <p className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-amber/15 px-2.5 py-1 text-[12px] font-semibold text-ink">
-                                            <span className="text-amber">⏱</span>
-                                            마감 {auction.extensionTime}분 안에 입찰이 들어오면 {auction.extensionTime}분 연장됩니다
-                                        </p>
-                                    )}
                                     <dl className="mt-5 grid w-fit grid-cols-3 gap-x-9 gap-y-3.5 border-t border-line pt-4">
                                         {[
                                             ["컨디션", formatCondition(auction.itemCondition)],
                                             ["프레스", auction.product.pressType === "ORIGINAL" ? "오리지널" : "재발매"],
                                             ["발매", auction.product.releaseYear],
-                                            ["판매자", auction.seller.nickname],
-                                            ["상태", STATUS_LABELS[auction.status] ?? auction.status],
                                         ].map(([label, value]) => (
                                             <div key={label}>
                                                 <dt className="text-[10px] font-bold uppercase tracking-[0.1em] text-faint">
@@ -398,22 +502,80 @@ export function AuctionDetailPage() {
                                             </div>
                                         ))}
                                     </dl>
+                                    {/* 판매자 블록 — 닉네임이 없으면(탈퇴 등) "알 수 없음"을 두 번 쓰는 대신 블록을 숨긴다 */}
+                                    {auction.seller.nickname && (
+                                        <div className="mt-5 flex max-w-[420px] items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3">
+                                            <div className="grid h-9 w-9 place-items-center rounded-full bg-brand text-[15px] font-extrabold text-white">
+                                                {auction.seller.nickname[0]}
+                                            </div>
+                                            <div>
+                                                <p className="text-[13.5px] font-extrabold">{auction.seller.nickname}</p>
+                                                {sellerAuctions.data && (
+                                                    <p className="text-[12px] text-muted">
+                                                        판매{" "}
+                                                        <span className="font-mono font-bold tabular-nums">
+                                                            {sellerAuctions.data.totalElements}
+                                                        </span>
+                                                        건
+                                                    </p>
+                                                )}
+                                            </div>
+                                            {otherAuctions.length > 0 && (
+                                                <a
+                                                    href="#seller-others"
+                                                    className="ml-auto flex-none text-[12.5px] font-bold text-brand"
+                                                >
+                                                    다른 매물 →
+                                                </a>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
-                            <ItemNotes description={auction.itemDescription} images={auction.itemImages} />
+                            {/* 판매자가 남긴 설명 — 없으면 카드를 그리지 않는다 */}
+                            {auction.itemDescription && (
+                                <section className="mt-6 overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
+                                    <h3 className="border-b border-line px-5 py-3.5 text-[13px] font-extrabold text-muted">
+                                        판매자가 남긴 설명
+                                    </h3>
+                                    {/* 판매자가 넣은 줄바꿈을 그대로 살린다 */}
+                                    <p className="max-w-[72ch] whitespace-pre-line px-5 py-4 text-[14px] leading-[1.85] text-ink">
+                                        {auction.itemDescription}
+                                    </p>
+                                </section>
+                            )}
 
-                            <section className="mt-7 overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
-                                <div className="flex items-center justify-between border-b border-line px-5 py-4">
-                                    <h3 className="text-[15px] font-bold">호가 로그</h3>
-                                    {(auction.recentBids?.length ?? 0) > 0 && (
-                                        <span className="text-xs text-muted">
-                                            최근 <span className="font-mono tabular-nums">{auction.recentBids?.length}</span>건
-                                        </span>
-                                    )}
-                                </div>
-                                <BidLog entries={auction.recentBids ?? []} status={auction.status} />
-                            </section>
+                            <div className="mt-6 grid items-start gap-5 md:grid-cols-2">
+                                <section
+                                    id="bidlog"
+                                    className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm"
+                                >
+                                    <div className="flex items-center justify-between border-b border-line px-5 py-4">
+                                        <h3 className="text-[15px] font-bold">호가 로그</h3>
+                                        {(auction.recentBids?.length ?? 0) > 0 && (
+                                            <span className="text-xs text-muted">
+                                                최근 <span className="font-mono tabular-nums">{auction.recentBids?.length}</span>건
+                                            </span>
+                                        )}
+                                    </div>
+                                    <BidLog entries={auction.recentBids ?? []} status={auction.status} />
+                                </section>
+                                <TradesCard productId={auction.product.productId} />
+                            </div>
+
+                            {otherAuctions.length > 0 && (
+                                <section id="seller-others" className="mt-8 scroll-mt-4">
+                                    <h3 className="mb-4 font-display text-xl font-bold tracking-tight">
+                                        이 판매자의 다른 매물
+                                    </h3>
+                                    <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3">
+                                        {otherAuctions.map((item) => (
+                                            <AuctionCard key={item.auctionId} auction={item} />
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
                         </div>
 
                         {auction.status === "RUNNING" ? (
