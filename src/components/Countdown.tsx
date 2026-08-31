@@ -34,24 +34,38 @@ function formatCoarse(ms: number): string {
 // expiredLabel: 시각이 지났을 때 보여줄 문구. 종료 카운트다운이면 기본값 그대로, 시작 카운트다운이면
 // "곧 시작"처럼 바꿔 쓴다 — 시작 시각이 지나도 스케줄러가 상태를 옮기기 전까지는 SCHEDULED로 남기 때문
 export function Countdown({ endsAt, expiredLabel = "종료" }: { endsAt: number; expiredLabel?: string }) {
-    // 임박(1시간 미만)해야만 초 단위로 움직인다. 여유 구간은 1분에 한 번만 갱신 —
-    // 임박 구간으로 넘어가는 시점도 최대 1분 오차로 따라잡는다
-    const soonAtMount = endsAt - Date.now() < 3600_000;
-    const now = useNow(soonAtMount ? 1000 : 60_000);
+    // 1일 이내면 초까지 보여주므로 초 단위로 움직인다 (팀 결정 — 화면당 카드 수가 적어 리렌더 부담 없음).
+    // 1일 이상 남은 것은 "N일 N시간"이라 1분에 한 번만 갱신한다
+    const detailedAtMount = endsAt - Date.now() < 86_400_000;
+    const now = useNow(detailedAtMount ? 1000 : 60_000);
     const remaining = endsAt - now;
+    // 초 표시는 1일 이내부터, 주황 강조는 1시간 이내부터 — 표시 정밀도와 임박 경고를 분리한다
+    const detailed = remaining > 0 && remaining < 86_400_000;
     const soon = remaining > 0 && remaining < 3600_000;
     return (
         <span
-            className={`inline-flex items-center gap-1.5 font-mono text-xs font-bold tabular-nums ${
+            className={`inline-flex items-center gap-1 font-mono text-xs font-bold tabular-nums ${
                 soon ? "text-live" : "text-ink"
             }`}
         >
-            <span
-                className={`h-1.5 w-1.5 rounded-full ${
-                    soon ? "bg-live animate-[live-pulse_1.1s_infinite] motion-reduce:animate-none" : "bg-faint"
+            <svg
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={`h-3 w-3 ${
+                    soon
+                        ? "text-live animate-[live-pulse_1.1s_infinite] motion-reduce:animate-none"
+                        : "text-faint"
                 }`}
-            />
-            {remaining <= 0 ? expiredLabel : soon ? formatRemaining(remaining) : formatCoarse(remaining)}
+            >
+                <circle cx="12" cy="12" r="8.6" />
+                <path d="M12 7.6v4.7l3 1.7" />
+            </svg>
+            {remaining <= 0 ? expiredLabel : detailed ? formatRemaining(remaining) : formatCoarse(remaining)}
         </span>
     );
 }

@@ -43,34 +43,37 @@ export function AuctionCard({ auction, className = "" }: { auction: AuctionListI
                 <WatchButton auctionId={auction.auctionId} status={auction.status} />
             </div>
             <p className="mt-2 truncate text-[13.5px] font-bold">{auction.title}</p>
-            <p className="truncate text-[12px] font-semibold text-muted">
-                {auction.artistName}
-                {auction.releaseYear ? ` · ${auction.releaseYear}` : ""}
-            </p>
-            <p className="mt-1 flex items-center gap-1.5 text-[11px] font-semibold text-faint">
-                {auction.itemCondition && (
-                    <span className="rounded-md bg-surface2 px-1.5 py-px font-extrabold text-muted">
-                        {formatCondition(auction.itemCondition).split(" ")[0]}
+            {/* 제목 아래를 좌우로 나눈다 — 오른쪽은 위 시간·아래 가격 (팀 확정 시안 v2) */}
+            <div className="grid grid-cols-[1fr_auto] items-stretch gap-x-2.5">
+                <div className="min-w-0">
+                    <p className="truncate text-[12px] font-semibold text-muted">
+                        {auction.artistName}
+                        {auction.releaseYear ? ` · ${auction.releaseYear}` : ""}
+                    </p>
+                    <p className="mt-1 flex items-center gap-1.5 text-[11px] font-semibold text-faint">
+                        {auction.itemCondition && (
+                            <span className="rounded-md bg-surface2 px-1.5 py-px font-extrabold text-muted">
+                                {formatCondition(auction.itemCondition).split(" ")[0]}
+                            </span>
+                        )}
+                        <span>{auction.bidCount > 0 ? `입찰 ${auction.bidCount}회` : "입찰 전"}</span>
+                    </p>
+                </div>
+                <div className="flex flex-none flex-col items-end justify-between">
+                    {auction.status === "RUNNING" && <Countdown endsAt={parseServerTime(auction.endAt)} />}
+                    {auction.status === "SCHEDULED" && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-faint">
+                            시작까지 <Countdown endsAt={parseServerTime(auction.startAt)} expiredLabel="곧 시작" />
+                        </span>
+                    )}
+                    <span className="mt-auto flex items-baseline gap-1">
+                        <b className={`font-mono text-[14.5px] font-bold tabular-nums ${price.className}`}>
+                            {formatWon(auction.finalPrice)}
+                        </b>
+                        <small className="text-[10.5px] font-bold text-faint">{price.label}</small>
                     </span>
-                )}
-                <span>{auction.bidCount > 0 ? `입찰 ${auction.bidCount}회` : "입찰 전"}</span>
-                {auction.status === "RUNNING" && (
-                    <span className="ml-auto">
-                        <Countdown endsAt={parseServerTime(auction.endAt)} />
-                    </span>
-                )}
-                {auction.status === "SCHEDULED" && (
-                    <span className="ml-auto inline-flex items-center gap-1">
-                        시작까지 <Countdown endsAt={parseServerTime(auction.startAt)} expiredLabel="곧 시작" />
-                    </span>
-                )}
-            </p>
-            <p className="mt-1.5 flex items-baseline gap-1.5">
-                <b className={`font-mono text-[14.5px] font-bold tabular-nums ${price.className}`}>
-                    {formatWon(auction.finalPrice)}
-                </b>
-                <small className="text-[10.5px] font-bold text-faint">{price.label}</small>
-            </p>
+                </div>
+            </div>
         </Link>
     );
 }
