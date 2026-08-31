@@ -177,7 +177,8 @@ function HeaderSearch() {
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
                 placeholder="⌕ 앨범, 아티스트 검색"
-                aria-label="카탈로그 검색"
+                // 카탈로그 화면의 검색 입력과 라벨이 겹치면 보조기술이 두 입력창을 구분하지 못한다
+                aria-label="빠른 검색"
                 className="w-52 rounded-lg border border-line bg-surface px-3 py-1.5 text-[13px] outline-none placeholder:text-faint focus:border-brand"
             />
         </form>
