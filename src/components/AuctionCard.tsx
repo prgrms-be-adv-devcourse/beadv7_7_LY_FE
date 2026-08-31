@@ -56,7 +56,7 @@ export function AuctionCard({ auction, className = "" }: { auction: AuctionListI
                                 {formatCondition(auction.itemCondition).split(" ")[0]}
                             </span>
                         )}
-                        <span>{auction.bidCount > 0 ? `입찰 ${auction.bidCount}회` : "입찰 전"}</span>
+                        <span className="whitespace-nowrap">{auction.bidCount > 0 ? `입찰 ${auction.bidCount}회` : "입찰 전"}</span>
                     </p>
                 </div>
                 <div className="flex flex-none flex-col items-end justify-between">
