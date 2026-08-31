@@ -131,14 +131,32 @@ export const WITHDRAW_FEE_RATE = 0.02;
 // POST /api/v1/wallet/withdraw/request
 // 백엔드가 Idempotency-Key 헤더를 필수로 검증한다((user_id, idempotency_key) 복합 유니크로
 // 중복 출금을 막는 설계) — 요청마다 새 키를 만들어 함께 보낸다
+// crypto.randomUUID()는 secure context(HTTPS 또는 localhost)에서만 존재한다.
+// 배포 도메인이 아직 HTTPS로 안 붙어있는 경우까지 대비해 폴백을 둔다 —
+// 형식은 중요하지 않고(백엔드는 64자 이하의 비어있지 않은 문자열이면 통과),
+// 매 요청마다 값만 달라지면 된다
+function generateIdempotencyKey(): string {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
+    return crypto.randomUUID();
+  }
+  return `wd-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+// POST /api/v1/wallet/withdraw/request
+// 원래 Idempotency-Key 헤더로 보냈으나, 배포 환경(게이트웨이 CORS 허용 헤더 목록)에
+// 이 커스텀 헤더가 없어 preflight가 막혔다. 게이트웨이 쪽 CORS 설정 변경을 기다리지 않고
+// 바디 필드로 옮겨서 우회한다 — Content-Type: application/json은 이미 허용돼 있어
+// (다른 POST 요청들이 정상 동작) 커스텀 헤더만 없애면 preflight 자체가 문제 없다
 export function requestWithdraw(
   amount: number,
 ): Promise<WithdrawRequestResult> {
-  return apiPost<WithdrawRequestResult>(
-    "/api/v1/wallet/withdraw/request",
-    { amount },
-    { "Idempotency-Key": crypto.randomUUID() },
-  );
+  return apiPost<WithdrawRequestResult>("/api/v1/wallet/withdraw/request", {
+    amount,
+    idempotencyKey: generateIdempotencyKey(),
+  });
 }
 
 // GET /api/v1/wallet/withdraw/{id}
