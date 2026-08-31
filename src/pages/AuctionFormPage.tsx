@@ -503,7 +503,7 @@ function AuctionForm({
                             onChange={(v) => patch({ bidUnit: v })}
                             min={AUCTION_POLICY.MIN_BID_UNIT}
                             step={100}
-                            hint={`${AUCTION_POLICY.MIN_BID_UNIT.toLocaleString("ko-KR")}원 이상`}
+                            hint={`${AUCTION_POLICY.MIN_BID_UNIT.toLocaleString("ko-KR")}원 이상 · 입찰 단위는 시작가보다 낮아야 합니다`}
                         />
                     </div>
                     <p className="mt-2 text-[12px] text-muted">
@@ -637,8 +637,9 @@ function AuctionForm({
                                 value={values.extensionTime}
                                 onChange={(v) => patch({ extensionTime: v })}
                                 min={AUCTION_POLICY.MIN_EXTENSION_MINUTES}
+                                max={AUCTION_POLICY.MAX_EXTENSION_MINUTES}
                                 step={1}
-                                hint={`${AUCTION_POLICY.MIN_EXTENSION_MINUTES}분 이상`}
+                                hint={`${AUCTION_POLICY.MIN_EXTENSION_MINUTES}분 이상 ${AUCTION_POLICY.MAX_EXTENSION_MINUTES}분 이하`}
                             />
                         </div>
                     )}
@@ -705,11 +706,12 @@ interface NumberFieldProps {
     value: string;
     onChange: (value: string) => void;
     min: number;
+    max?: number;
     step: number;
     hint: string;
 }
 
-function NumberField({ label, value, onChange, min, step, hint }: NumberFieldProps) {
+function NumberField({ label, value, onChange, min, max, step, hint }: NumberFieldProps) {
     return (
         <label className="block">
             <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-faint">{label}</span>
@@ -718,6 +720,7 @@ function NumberField({ label, value, onChange, min, step, hint }: NumberFieldPro
                 type="number"
                 inputMode="numeric"
                 min={min}
+                max={max}
                 step={step}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}

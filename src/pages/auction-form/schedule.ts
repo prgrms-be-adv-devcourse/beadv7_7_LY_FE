@@ -83,6 +83,9 @@ export function validateAuctionForm(values: AuctionFormValues, now: Date): strin
     const bidUnit = Number(values.bidUnit);
     if (values.bidUnit === "" || !Number.isFinite(bidUnit) || bidUnit < AUCTION_POLICY.MIN_BID_UNIT) {
         errors.push(`입찰 단위는 ${AUCTION_POLICY.MIN_BID_UNIT.toLocaleString("ko-KR")}원 이상이어야 합니다.`);
+    } else if (Number.isFinite(startPrice) && startPrice >= AUCTION_POLICY.MIN_START_PRICE && bidUnit >= startPrice) {
+        // 서버 불변식과 동일 — 단위가 시작가 이상이면 첫 호가부터 시작가를 뛰어넘는다
+        errors.push("입찰 단위는 시작가보다 낮아야 합니다.");
     }
 
     const startAt = parseInputValue(values.startAt);
@@ -107,8 +110,12 @@ export function validateAuctionForm(values: AuctionFormValues, now: Date): strin
     if (values.extensionEnabled) {
         const extensionTime = Number(values.extensionTime);
         if (values.extensionTime === "" || !Number.isFinite(extensionTime)
-            || extensionTime < AUCTION_POLICY.MIN_EXTENSION_MINUTES) {
-            errors.push(`자동 연장을 켰다면 연장 시간을 ${AUCTION_POLICY.MIN_EXTENSION_MINUTES}분 이상으로 넣어주세요.`);
+            || extensionTime < AUCTION_POLICY.MIN_EXTENSION_MINUTES
+            || extensionTime > AUCTION_POLICY.MAX_EXTENSION_MINUTES) {
+            errors.push(
+                `자동 연장을 켰다면 연장 시간을 ${AUCTION_POLICY.MIN_EXTENSION_MINUTES}분 이상 `
+                    + `${AUCTION_POLICY.MAX_EXTENSION_MINUTES}분 이하로 넣어주세요.`,
+            );
         }
     }
 

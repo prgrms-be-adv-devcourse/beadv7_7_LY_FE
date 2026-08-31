@@ -10,6 +10,8 @@ export const AUCTION_POLICY = {
     MAX_IMAGE_BYTES: 5 * 1024 * 1024,
     MIN_START_PRICE: 1000,
     MIN_BID_UNIT: 100,
+    // 자동 연장 시간 상한 (백엔드 AuctionPolicy.MAX_EXTENSION_MINUTES와 동일)
+    MAX_EXTENSION_MINUTES: 60,
     // 등록할 때 시작 시각은 지금으로부터 최소 이만큼 뒤여야 한다
     MIN_START_LEAD_MINUTES: 30,
     MIN_DURATION_HOURS: 1,
