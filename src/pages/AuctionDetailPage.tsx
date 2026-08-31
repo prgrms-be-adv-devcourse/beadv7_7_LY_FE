@@ -319,30 +319,46 @@ function EndedBox({ auction }: { auction: AuctionDetail }) {
     );
 }
 
-// 커버 열 — 위는 음반 대표 커버, 아래는 판매자가 올린 매물 사진 썸네일 줄.
-// 사진이 없으면 줄 자체를 그리지 않는다 ("올라온 사진이 없습니다" 같은 빈 문구를 만들지 않는다)
+// 커버 열 — 판매자가 올린 매물 사진이 있으면 그 사진들이 주인공이다 (피드 카드 썸네일과 같은
+// 우선순위). 카탈로그 커버는 상품 상세(제목 링크)가 담당하고, 사진이 없을 때만 폴백으로 쓴다
 function CoverColumn({ auction }: { auction: AuctionDetail }) {
     const photos = auction.itemImages ?? [];
-    const [zoomed, setZoomed] = useState<string | null>(null);
+    const [selected, setSelected] = useState(0);
+    const [zoomed, setZoomed] = useState(false);
+    const main = photos[selected] ?? photos[0];
 
     return (
         <div>
-            <VinylCover
-                title={auction.product.title}
-                artist={auction.product.artistName}
-                imageUrl={auction.product.coverImageUrl}
-                spin={auction.status === "RUNNING"}
-                className="rounded-xl shadow"
-            />
-            {photos.length > 0 && (
+            {photos.length > 0 ? (
+                <button
+                    type="button"
+                    onClick={() => setZoomed(true)}
+                    aria-label="매물 사진 크게 보기"
+                    className="block w-full overflow-hidden rounded-xl shadow"
+                >
+                    <img src={main} alt="매물 사진" className="aspect-square w-full object-cover" />
+                </button>
+            ) : (
+                <VinylCover
+                    title={auction.product.title}
+                    artist={auction.product.artistName}
+                    imageUrl={auction.product.coverImageUrl}
+                    spin={auction.status === "RUNNING"}
+                    className="rounded-xl shadow"
+                />
+            )}
+            {photos.length > 1 && (
                 <div className="mt-2.5 grid grid-cols-4 gap-2">
                     {photos.map((photo, index) => (
                         <button
                             key={`${index}-${photo.slice(0, 32)}`}
                             type="button"
-                            onClick={() => setZoomed(photo)}
-                            aria-label={`매물 사진 ${index + 1} 크게 보기`}
-                            className="overflow-hidden rounded-lg border border-line transition-colors hover:border-line-strong"
+                            onClick={() => setSelected(index)}
+                            aria-label={`매물 사진 ${index + 1} 보기`}
+                            aria-current={index === selected}
+                            className={`overflow-hidden rounded-lg border transition-colors ${
+                                index === selected ? "border-brand" : "border-line hover:border-line-strong"
+                            }`}
                         >
                             <img src={photo} alt={`매물 사진 ${index + 1}`} loading="lazy" className="aspect-square w-full object-cover" />
                         </button>
@@ -352,13 +368,13 @@ function CoverColumn({ auction }: { auction: AuctionDetail }) {
             <div className="mt-3">
                 <WatchButton auctionId={auction.auctionId} status={auction.status} variant="inline" />
             </div>
-            {zoomed && (
+            {zoomed && main && (
                 <div
                     role="presentation"
-                    onClick={() => setZoomed(null)}
+                    onClick={() => setZoomed(false)}
                     className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-6"
                 >
-                    <img src={zoomed} alt="매물 사진 크게 보기" className="max-h-full max-w-full rounded-lg" />
+                    <img src={main} alt="매물 사진 크게 보기" className="max-h-full max-w-full rounded-lg" />
                 </div>
             )}
         </div>
