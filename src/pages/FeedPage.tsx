@@ -45,6 +45,11 @@ export function FeedPage() {
         placeholderData: keepPreviousData,
     });
 
+    // "종료 포함"은 상태 필터 해제(전체 조회)로 구현되어 시작 전 경매까지 섞여 나온다.
+    // 피드는 시작 전을 노출하지 않기로 해서 클라이언트에서 걸러낸다 — 시작 전 경매 수만큼
+    // 페이지가 살짝 덜 차 보일 수 있지만, 상태 필터를 하나만 받는 API 제약상의 절충이다
+    const items = (query.data?.items ?? []).filter((auction) => auction.status !== "SCHEDULED");
+
     return (
         <div>
             <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
@@ -64,7 +69,7 @@ export function FeedPage() {
                 isLoading={query.isPending}
                 error={query.error}
                 onRetry={() => query.refetch()}
-                isEmpty={!query.data || query.data.items.length === 0}
+                isEmpty={!query.data || items.length === 0}
                 emptyMessage={
                     <div>
                         조건에 맞는 경매가 없습니다.
@@ -94,7 +99,7 @@ export function FeedPage() {
                         query.isFetching ? "opacity-60" : ""
                     }`}
                 >
-                    {query.data?.items.map((auction) => (
+                    {items.map((auction) => (
                         <AuctionCard key={auction.auctionId} auction={auction} />
                     ))}
                 </div>
