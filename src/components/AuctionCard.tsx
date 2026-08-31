@@ -35,13 +35,9 @@ export function AuctionCard({ auction, className = "" }: { auction: AuctionListI
                 <VinylCover title={auction.title} artist={auction.artistName} imageUrl={auction.thumbnail} />
                 {/* 종료된 카드는 커버를 옅게 눌러 진행 중과 한눈에 구분한다 */}
                 {ended && <div className="absolute inset-0 z-[1] bg-paper/40" />}
-                {chip ? (
+                {chip && (
                     <span className={`absolute left-2 top-2 z-[2] rounded-full px-2 py-0.5 text-[10.5px] font-extrabold ${chip.className}`}>
                         {chip.label}
-                    </span>
-                ) : (
-                    <span className="absolute left-2 top-2 z-[2] rounded-full bg-live px-2 py-0.5 font-mono text-[10.5px] font-extrabold tabular-nums text-white">
-                        <Countdown endsAt={parseServerTime(auction.endAt)} />
                     </span>
                 )}
                 <WatchButton auctionId={auction.auctionId} status={auction.status} />
@@ -58,6 +54,16 @@ export function AuctionCard({ auction, className = "" }: { auction: AuctionListI
                     </span>
                 )}
                 <span>{auction.bidCount > 0 ? `입찰 ${auction.bidCount}회` : "입찰 전"}</span>
+                {auction.status === "RUNNING" && (
+                    <span className="ml-auto">
+                        <Countdown endsAt={parseServerTime(auction.endAt)} />
+                    </span>
+                )}
+                {auction.status === "SCHEDULED" && (
+                    <span className="ml-auto inline-flex items-center gap-1">
+                        시작까지 <Countdown endsAt={parseServerTime(auction.startAt)} expiredLabel="곧 시작" />
+                    </span>
+                )}
             </p>
             <p className="mt-1.5 flex items-baseline gap-1.5">
                 <b className={`font-mono text-[14.5px] font-bold tabular-nums ${price.className}`}>
