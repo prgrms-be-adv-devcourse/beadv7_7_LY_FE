@@ -129,12 +129,16 @@ export interface WithdrawStatusResult {
 export const WITHDRAW_FEE_RATE = 0.02;
 
 // POST /api/v1/wallet/withdraw/request
+// 백엔드가 Idempotency-Key 헤더를 필수로 검증한다((user_id, idempotency_key) 복합 유니크로
+// 중복 출금을 막는 설계) — 요청마다 새 키를 만들어 함께 보낸다
 export function requestWithdraw(
   amount: number,
 ): Promise<WithdrawRequestResult> {
-  return apiPost<WithdrawRequestResult>("/api/v1/wallet/withdraw/request", {
-    amount,
-  });
+  return apiPost<WithdrawRequestResult>(
+    "/api/v1/wallet/withdraw/request",
+    { amount },
+    { "Idempotency-Key": crypto.randomUUID() },
+  );
 }
 
 // GET /api/v1/wallet/withdraw/{id}
