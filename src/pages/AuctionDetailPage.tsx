@@ -159,7 +159,7 @@ function BidBox({ auction }: { auction: AuctionDetail }) {
                               [
                                   "자동 연장",
                                   <span key="e" className="font-semibold">
-                                      마감 {auction.extensionTime}분 안 입찰 시 +{auction.extensionTime}분
+                                      마감 {auction.extensionTime}분 내 입찰 시 {auction.extensionTime}분 연장
                                   </span>,
                               ] as const,
                           ]

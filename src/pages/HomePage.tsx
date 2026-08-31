@@ -67,7 +67,7 @@ export function HomePage() {
                 <SectionHead
                     eyebrow="Catalog Picks"
                     eyebrowClass="text-brand"
-                    title="둘러볼 만한 판"
+                    title="둘러볼 만한 LP"
                     link={{ to: "/catalog", label: "카탈로그 전체 →" }}
                 />
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">

@@ -208,7 +208,7 @@ export function OverviewTab({ onSelect }: OverviewTabProps) {
                 </div>
                 <div className="overflow-hidden rounded-2xl border border-line bg-surface">
                     <div className="flex items-baseline justify-between border-b border-line px-4 py-3">
-                        <h3 className="text-[14px] font-extrabold">최근 지갑 내역</h3>
+                        <h3 className="text-[14px] font-extrabold">최근 거래 내역</h3>
                         <button
                             type="button"
                             onClick={() => onSelect("wallet")}

@@ -48,8 +48,7 @@ export function SettlementsTab() {
     return (
         <div>
             <p className="mb-4 text-[13.5px] text-muted">
-                판매자로서 받을 정산 내역입니다. 거래가 확정된 주문이 정산 항목이 되고, 확정된 항목은 정산 배치로 묶여
-                지급됩니다.
+                판매자로서 받을 정산 내역입니다. 주문 확정 시 거래 대금은 지정된 날짜에 지급됩니다.
             </p>
 
             <div className="mb-5 flex flex-wrap items-center gap-2.5">
