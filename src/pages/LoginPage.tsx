@@ -13,8 +13,7 @@ export function LoginPage() {
     const [error, setError] = useState<string | null>(null);
     const [pending, setPending] = useState(false);
 
-    async function submit(e: React.FormEvent) {
-        e.preventDefault();
+    async function submit(keepLoggedIn: boolean) {
         if (!email.trim() || !password.trim()) {
             setError("이메일과 비밀번호를 모두 입력하세요.");
             return;
@@ -22,7 +21,7 @@ export function LoginPage() {
         setPending(true);
         setError(null);
         try {
-            await login(email.trim(), password);
+            await login(email.trim(), password, keepLoggedIn);
             // 찜·관심 등록하려다 온 경우 보던 자리로 되돌려보낸다 (토스트의 로그인 버튼이 from을 실어 보냄)
             navigate(state?.from ?? "/", { replace: true });
         } catch (err) {
@@ -42,7 +41,13 @@ export function LoginPage() {
                         가입이 완료됐습니다. 로그인해주세요.
                     </p>
                 )}
-                <form onSubmit={submit} className="mt-5 flex flex-col gap-3">
+                <form
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        void submit(true);
+                    }}
+                    className="mt-5 flex flex-col gap-3"
+                >
                     <label className="text-[13px] font-semibold">
                         이메일
                         <input
@@ -71,6 +76,17 @@ export function LoginPage() {
                     >
                         {pending ? "로그인 중…" : "로그인"}
                     </button>
+                    <button
+                        type="button"
+                        disabled={pending}
+                        onClick={() => void submit(false)}
+                        className="rounded-xl border border-line py-3 text-sm font-bold text-ink transition-colors hover:bg-paper disabled:opacity-60"
+                    >
+                        공용 PC 로그인
+                    </button>
+                    <p className="text-center text-[12px] text-muted">
+                        공용 PC로 로그인하면 브라우저를 닫을 때 로그인이 해제됩니다.
+                    </p>
                 </form>
                 <p className="mt-4 text-center text-[13px] text-muted">
                     계정이 없나요?{" "}
